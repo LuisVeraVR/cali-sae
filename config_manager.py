@@ -7,7 +7,7 @@ class ConfigManager:
     """Gestor de configuraciones remotas para actualizaciones dinámicas"""
     
     def __init__(self):
-        self.config_url = "https://raw.githubusercontent.com/tu-usuario/facturas-config/main/config.json"
+        self.config_url = "https://raw.githubusercontent.com/LuisVeraVR/operator-auto/main/config.json"
         self.local_config_file = "app_config.json"
         self.cache_duration = timedelta(hours=4)  # Cache por 4 horas
         

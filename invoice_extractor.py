@@ -54,7 +54,7 @@ class InvoiceExtractor:
     def verify_password(self):
         """Verificar contraseña de acceso"""
         # Hash de la contraseña: "FacturasElectronicas2024"
-        correct_hash = "a8b5c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+        correct_hash = "9b58b35634d4e4b06b0bf70a319f6aac43dd85d183edabb4f62d294ec69b258d"
         
         password = simpledialog.askstring("Acceso Restringido", 
                                          "Ingrese la contraseña:", show='*')
