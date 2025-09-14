@@ -1,0 +1,118 @@
+# ===================================
+# SISTEMA DE FACTURAS ELECTRÓNICAS
+# .gitignore
+# ===================================
+
+# Directorios de construcción y distribución
+build/
+dist/
+*.egg-info/
+
+# Archivos ejecutables generados
+*.exe
+*.msi
+*.dmg
+*.app
+
+# Archivos de configuración local
+app_config.json
+config.local.json
+
+# Archivos de datos de prueba
+test_data/
+sample_invoices/
+*.zip
+facturas_*.csv
+AGROBUITRON_Facturas_*.csv
+MG_Facturas_*.csv
+ROSAS_Facturas_*.csv
+
+# Archivos de Excel de prueba
+*.xlsx
+*.xls
+~$*.xlsx
+~$*.xls
+
+# Archivos temporales de Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Archivos temporales de macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Archivos de entorno virtual
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos de log
+*.log
+logs/
+*.out
+
+# Archivos de certificados y claves
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Archivos de backup
+*.bak
+*.backup
+*.old
+*.tmp
+
+# Archivos de sistema
+*.lnk
+*.url
+
+# Carpetas de instalación
+setup_temp/
+installer_temp/
+
+# Archivos de prueba XML
+test_xml/
+xml_samples/
+
+# Archivos de actualización
+*_update.exe
+update_temp/
+
+# Archivos de configuración sensibles
+passwords.txt
+credentials.json
+secrets.json
+
+# Documentos temporales
+*.docx
+*.pdf
+*.txt
+
+# Excepciones - archivos que SÍ queremos incluir
+!README.md
+!requirements.txt
+!GUÍA*.md
+!LICENSE
+!.gitignore
