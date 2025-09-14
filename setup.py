@@ -6,6 +6,7 @@ import os
 build_exe_options = {
     "packages": [
         "tkinter", 
+        "tkinter.font",
         "xml.etree.ElementTree", 
         "zipfile", 
         "pandas", 
@@ -15,7 +16,9 @@ build_exe_options = {
         "pathlib",
         "hashlib",
         "json",
-        "requests"
+        "requests",
+        "sqlite3",
+        "csv"
     ],
     "excludes": [
         "test",
@@ -40,19 +43,19 @@ if sys.platform == "win32":
 # Ejecutable
 executables = [
     Executable(
-        "invoice_extractor.py",
+        "advanced_invoice_system.py",
         base=base,
-        target_name="Sistema_Facturas_Electronicas.exe",
+        target_name="Sistema_Facturas_v2.0.exe",
         icon=None,
-        copyright="2024 - Sistema de Facturas Electrónicas"
+        copyright="2024 - Sistema de Facturas Electrónicas v2.0"
     )
 ]
 
 # Setup
 setup(
-    name="Sistema Facturas Electrónicas",
-    version="1.0.0",
-    description="Sistema para extracción de facturas electrónicas DIAN",
+    name="Sistema Facturas Electrónicas v2.0",
+    version="2.1.0",
+    description="Sistema avanzado para extracción de facturas electrónicas DIAN con autenticación",
     options={"build_exe": build_exe_options},
     executables=executables
 )

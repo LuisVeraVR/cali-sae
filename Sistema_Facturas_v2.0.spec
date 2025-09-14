@@ -2,11 +2,11 @@
 
 
 a = Analysis(
-    ['invoice_extractor.py'],
+    ['advanced_invoice_system.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['pandas', 'openpyxl', 'numpy', 'requests', 'tkinter', 'xml.etree.ElementTree', 'zipfile', 'datetime', 'threading', 'pathlib', 'hashlib', 'json'],
+    hiddenimports=['pandas', 'openpyxl', 'numpy', 'requests', 'sqlite3', 'tkinter', 'tkinter.font', 'xml.etree.ElementTree', 'zipfile', 'datetime', 'threading', 'pathlib', 'hashlib', 'json', 'csv'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='Sistema_Facturas_Electronicas',
+    name='Sistema_Facturas_v2.0',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,5 +40,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='Sistema_Facturas_Electronicas',
+    name='Sistema_Facturas_v2.0',
 )

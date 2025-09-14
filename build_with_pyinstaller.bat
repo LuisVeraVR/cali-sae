@@ -1,7 +1,7 @@
 @echo off
 echo ================================
 echo  CONSTRUYENDO CON PYINSTALLER
-echo  Sistema de Facturas Electronicas
+echo  Sistema de Facturas Electronicas v2.0
 echo ================================
 
 REM Verificar si PyInstaller está instalado
@@ -13,7 +13,7 @@ if errorlevel 1 (
 
 REM Verificar dependencias necesarias
 echo Verificando dependencias...
-python -c "import pandas, openpyxl, numpy, requests" 2>nul
+python -c "import pandas, openpyxl, numpy, requests, sqlite3" 2>nul
 if errorlevel 1 (
     echo Instalando dependencias faltantes...
     pip install pandas openpyxl numpy requests
@@ -30,12 +30,14 @@ echo Construyendo ejecutable con PyInstaller...
 pyinstaller ^
     --onedir ^
     --windowed ^
-    --name "Sistema_Facturas_Electronicas" ^
+    --name "Sistema_Facturas_v2.0" ^
     --hidden-import pandas ^
     --hidden-import openpyxl ^
     --hidden-import numpy ^
     --hidden-import requests ^
+    --hidden-import sqlite3 ^
     --hidden-import tkinter ^
+    --hidden-import tkinter.font ^
     --hidden-import xml.etree.ElementTree ^
     --hidden-import zipfile ^
     --hidden-import datetime ^
@@ -43,6 +45,7 @@ pyinstaller ^
     --hidden-import pathlib ^
     --hidden-import hashlib ^
     --hidden-import json ^
+    --hidden-import csv ^
     --exclude-module matplotlib ^
     --exclude-module scipy ^
     --exclude-module PIL ^
@@ -56,34 +59,34 @@ pyinstaller ^
     --exclude-module pytest ^
     --exclude-module test ^
     --clean ^
-    invoice_extractor.py
+    advanced_invoice_system.py
 
 REM Verificar si la construcción fue exitosa
-if exist "dist\Sistema_Facturas_Electronicas" (
+if exist "dist\Sistema_Facturas_v2.0" (
     echo.
     echo ================================
     echo  CONSTRUCCION EXITOSA!
     echo ================================
     echo.
     echo El ejecutable se encuentra en:
-    echo dist\Sistema_Facturas_Electronicas\
+    echo dist\Sistema_Facturas_v2.0\
     echo.
     echo Archivo principal:
-    echo Sistema_Facturas_Electronicas.exe
+    echo Sistema_Facturas_v2.0.exe
     echo.
     echo Para distribuir, comprime toda la carpeta
-    echo 'dist\Sistema_Facturas_Electronicas'
+    echo 'dist\Sistema_Facturas_v2.0'
     echo.
     
     REM Crear ZIP automáticamente
     echo Creando archivo ZIP para distribución...
     cd dist
-    powershell "Compress-Archive -Path 'Sistema_Facturas_Electronicas' -DestinationPath 'Sistema_Facturas_v1.0.0.zip' -Force"
-    if exist "Sistema_Facturas_v1.0.0.zip" (
+    powershell "Compress-Archive -Path 'Sistema_Facturas_v2.0' -DestinationPath 'Sistema_Facturas_v2.0.zip' -Force"
+    if exist "Sistema_Facturas_v2.0.zip" (
         echo.
-        echo ZIP creado exitosamente: dist\Sistema_Facturas_v1.0.0.zip
+        echo ZIP creado exitosamente: dist\Sistema_Facturas_v2.0.zip
         echo Tamaño del ZIP:
-        dir "Sistema_Facturas_v1.0.0.zip" | find "Sistema_Facturas_v1.0.0.zip"
+        dir "Sistema_Facturas_v2.0.zip" | find "Sistema_Facturas_v2.0.zip"
     )
     cd ..
     echo.
