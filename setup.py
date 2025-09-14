@@ -2,7 +2,7 @@ from cx_Freeze import setup, Executable
 import sys
 import os
 
-# Dependencias que necesita incluir
+# Configuración MÍNIMA - solo excluir lo realmente innecesario
 build_exe_options = {
     "packages": [
         "tkinter", 
@@ -15,53 +15,44 @@ build_exe_options = {
         "pathlib",
         "hashlib",
         "json",
-        "requests",
-        "packaging"
+        "requests"
     ],
     "excludes": [
-        "test", 
+        "test",
         "unittest", 
-        "email", 
-        "html", 
-        "http", 
-        "urllib", 
-        "xml.sax",
         "pydoc_data",
-        "distutils"
+        "matplotlib",
+        "numpy.distutils",
+        "scipy",
+        "IPython",
+        "jupyter",
+        "notebook"
     ],
-    "include_files": [
-        # Incluir archivos adicionales si es necesario
-        # ("ruta/archivo", "archivo_destino")
-    ],
-    "optimize": 2,
-    "zip_include_packages": ["*"],
-    "zip_exclude_packages": []
+    "include_files": [],
+    "optimize": 1  # Cambiado a 1 para evitar sobre-optimización
 }
 
 # Configuración específica para Windows
 base = None
 if sys.platform == "win32":
-    base = "Win32GUI"  # Oculta la ventana de consola
+    base = "Win32GUI"
 
-# Configuración del ejecutable
+# Ejecutable
 executables = [
     Executable(
         "invoice_extractor.py",
         base=base,
         target_name="Sistema_Facturas_Electronicas.exe",
-        icon=None,  # Puedes agregar un archivo .ico aquí
-        copyright="2024 - Sistema de Facturas Electrónicas",
-        trademarks="Procesamiento de Facturas DIAN"
+        icon=None,
+        copyright="2024 - Sistema de Facturas Electrónicas"
     )
 ]
 
-# Configuración del setup
+# Setup
 setup(
     name="Sistema Facturas Electrónicas",
     version="1.0.0",
-    description="Sistema para extracción de datos de facturas electrónicas DIAN",
-    author="Tu Nombre/Empresa",
-    author_email="contacto@empresa.com",
+    description="Sistema para extracción de facturas electrónicas DIAN",
     options={"build_exe": build_exe_options},
     executables=executables
 )

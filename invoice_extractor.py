@@ -72,8 +72,8 @@ class InvoiceExtractor:
     def check_for_updates(self):
         """Verificar actualizaciones disponibles"""
         try:
-            # URL del archivo de versión en GitHub (ejemplo)
-            version_url = "https://api.github.com/repos/tu-usuario/invoice-extractor/releases/latest"
+            # URL del repositorio específico de LuisVeraVR
+            version_url = "https://api.github.com/repos/LuisVeraVR/operator-auto/releases/latest"
             
             response = requests.get(version_url, timeout=5)
             if response.status_code == 200:
@@ -90,6 +90,12 @@ class InvoiceExtractor:
     
     def download_update(self, download_url):
         """Descargar e instalar actualización"""
+        if not HAS_REQUESTS:
+            messagebox.showinfo("Actualización", 
+                              "Para actualizar, descargue manualmente desde:\n"
+                              "https://github.com/LuisVeraVR/operator-auto/releases")
+            return
+            
         try:
             response = requests.get(download_url, stream=True)
             update_file = "invoice_extractor_update.exe"
