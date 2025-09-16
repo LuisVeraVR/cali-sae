@@ -25,12 +25,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, font
 
-try:
-    import pandas as pd
-    HAS_PANDAS = True
-except ImportError:
-    HAS_PANDAS = False
-    print("Pandas no disponible - usando CSV nativo")
+import pandas as pd
 
 # Dependencias opcionales
 try:
@@ -45,47 +40,6 @@ except Exception:
 #  CONSTANTES / CONFIG
 # ==========================
 DB_FILE = "facturas_users.db"
-
-
-
-def save_to_csv_native(data_list, filename, columns=None):
-    """Guardar datos a CSV usando el módulo csv nativo (sin pandas)"""
-    if not data_list:
-        return None
-    
-    try:
-        import csv
-        
-        # Aplanar datos si es necesario
-        flattened_data = []
-        for item in data_list:
-            if isinstance(item, list):
-                flattened_data.extend(item)
-            else:
-                flattened_data.append(item)
-        
-        # Si no se especifican columnas, usar las del primer elemento
-        if columns is None and flattened_data:
-            if isinstance(flattened_data[0], dict):
-                columns = list(flattened_data[0].keys())
-        
-        if not columns:
-            return None
-            
-        with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=columns, delimiter=';')
-            writer.writeheader()
-            
-            for row in flattened_data:
-                if isinstance(row, dict):
-                    # Asegurar que todas las columnas estén presentes
-                    clean_row = {col: row.get(col, '') for col in columns}
-                    writer.writerow(clean_row)
-        
-        return filename
-    except Exception as e:
-        print(f"Error guardando CSV nativo: {e}")
-        return None
 
 
 # ==========================
@@ -933,53 +887,7 @@ class InvoiceExtractor:
 
     # ---------- Salidas ----------
     def _save_csv_agro(self):
-        """Generar archivo CSV para AGROBUITRON (con fallback sin pandas)"""
         if not self.extracted_data:
-            return None
-        
-        try:
-            # Definir orden de columnas específico para AGROBUITRON
-            column_order = [
-                'N° Factura', 'Nombre Producto', 'Codigo Subyacente', 'Unidad Medida',
-                'Cantidad', 'Precio Unitario', 'Precio Total', 'Fecha Factura', 'Fecha Pago',
-                'Nit Comprador', 'Nombre Comprador', 'Nit Vendedor', 'Nombre Vendedor',
-                'Principal V,C', 'Municipio', 'Iva', 'Descripción', 'Activa Factura',
-                'Activa Bodega', 'Incentivo', 'Cantidad Original', 'Moneda'
-            ]
-            
-            # Generar nombre de archivo con timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            csv_filename = f"AGROBUITRON_Facturas_{timestamp}.csv"
-            
-            # Usar pandas si está disponible, sino CSV nativo
-            if HAS_PANDAS:
-                try:
-                    # Aplanar datos
-                    rows = []
-                    for x in self.extracted_data:
-                        if isinstance(x, list):
-                            rows.extend(x)
-                        else:
-                            rows.append(x)
-
-                    # Crear DataFrame
-                    df = pd.DataFrame(rows)
-                    df = df.reindex(columns=column_order, fill_value="")
-                    
-                    # Guardar CSV
-                    df.to_csv(csv_filename, index=False, encoding="utf-8-sig", sep=";")
-                    return csv_filename
-                    
-                except Exception as e:
-                    print(f"Error con pandas, usando CSV nativo: {e}")
-                    # Fallback a CSV nativo
-                    return save_to_csv_native(self.extracted_data, csv_filename, column_order)
-            else:
-                # Usar CSV nativo directamente
-                return save_to_csv_native(self.extracted_data, csv_filename, column_order)
-                
-        except Exception as e:
-            messagebox.showerror("Error", f"Error generando CSV: {str(e)}")
             return None
         try:
             rows = []
