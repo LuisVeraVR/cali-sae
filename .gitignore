@@ -26,7 +26,7 @@ facturas_*.csv
 AGROBUITRON_Facturas_*.csv
 MG_Facturas_*.csv
 ROSAS_Facturas_*.csv
-
+.venv/
 # Archivos de Excel de prueba
 *.xlsx
 *.xls
