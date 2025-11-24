@@ -3,6 +3,7 @@ Main Controller - Coordinates main application logic between UI and use cases
 """
 from typing import List, Callable, Optional, Tuple
 from ...domain.use_cases.process_invoices import ProcessInvoices
+from ...domain.use_cases.process_jcr_invoices import ProcessJCRInvoices
 from ...domain.use_cases.check_updates import CheckUpdates, DownloadUpdate
 from ...domain.entities.user import User
 
@@ -13,6 +14,7 @@ class MainController:
     def __init__(
         self,
         process_invoices_use_case: ProcessInvoices,
+        process_jcr_invoices_use_case: ProcessJCRInvoices,
         check_updates_use_case: CheckUpdates,
         download_update_use_case: DownloadUpdate,
         current_user: User
@@ -22,11 +24,13 @@ class MainController:
 
         Args:
             process_invoices_use_case: Use case for processing invoices
+            process_jcr_invoices_use_case: Use case for processing JCR invoices
             check_updates_use_case: Use case for checking updates
             download_update_use_case: Use case for downloading updates
             current_user: Current logged in user
         """
         self.process_invoices_use_case = process_invoices_use_case
+        self.process_jcr_invoices_use_case = process_jcr_invoices_use_case
         self.check_updates_use_case = check_updates_use_case
         self.download_update_use_case = download_update_use_case
         self.current_user = current_user
@@ -61,6 +65,33 @@ class MainController:
             output_format=output_format,
             excel_file=excel_file,
             excel_sheet=excel_sheet,
+            progress_callback=progress_callback
+        )
+
+    def process_jcr_invoices(
+        self,
+        csv_files: List[str],
+        municipality: str,
+        iva_percentage: str,
+        progress_callback: Optional[Callable[[int, int], None]] = None
+    ) -> Tuple[bool, str, int]:
+        """
+        Process Juan Camilo Rosas invoice CSV/TXT files
+
+        Args:
+            csv_files: List of CSV/TXT file paths
+            municipality: Municipality name for invoices
+            iva_percentage: IVA percentage to use
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            Tuple of (success, message, records_processed)
+        """
+        return self.process_jcr_invoices_use_case.execute(
+            csv_files=csv_files,
+            municipality=municipality,
+            iva_percentage=iva_percentage,
+            username=self.current_user.username,
             progress_callback=progress_callback
         )
 

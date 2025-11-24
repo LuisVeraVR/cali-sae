@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QApplication
 # Domain layer
 from src.domain.use_cases.authenticate_user import AuthenticateUser, ChangePassword
 from src.domain.use_cases.process_invoices import ProcessInvoices
+from src.domain.use_cases.process_jcr_invoices import ProcessJCRInvoices
 from src.domain.use_cases.generate_report import GetReports, ExportReports
 from src.domain.use_cases.check_updates import CheckUpdates, DownloadUpdate
 
@@ -18,6 +19,7 @@ from src.infrastructure.database.sqlite_report_repository import SQLiteReportRep
 from src.infrastructure.parsers.xml_invoice_parser import XMLInvoiceParser
 from src.infrastructure.exporters.invoice_exporter import InvoiceExporter
 from src.infrastructure.exporters.csv_exporter import CSVExporter
+from src.infrastructure.exporters.jcr_reggis_exporter import JCRReggisExporter
 from src.infrastructure.updater.github_updater import GitHubUpdater
 
 # Presentation layer
@@ -48,6 +50,7 @@ class Application:
         self.xml_parser = XMLInvoiceParser()
         self.invoice_exporter = InvoiceExporter()
         self.csv_exporter = CSVExporter()
+        self.jcr_reggis_exporter = JCRReggisExporter()
         self.github_updater = GitHubUpdater(
             repo_owner="LuisVeraVR",
             repo_name="cali-sae"
@@ -93,6 +96,12 @@ class Application:
             self.invoice_exporter
         )
 
+        self.process_jcr_invoices_use_case = ProcessJCRInvoices(
+            self.report_repository,
+            None,  # csv_parser - will be created per file
+            self.jcr_reggis_exporter
+        )
+
         self.get_reports_use_case = GetReports(self.report_repository)
 
         self.export_reports_use_case = ExportReports(
@@ -110,6 +119,7 @@ class Application:
         # Initialize main controller
         self.main_controller = MainController(
             self.process_invoices_use_case,
+            self.process_jcr_invoices_use_case,
             self.check_updates_use_case,
             self.download_update_use_case,
             self.current_user
