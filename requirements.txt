@@ -7,6 +7,7 @@
 openpyxl>=3.1.0
 requests>=2.28.0
 packaging>=21.0
+PyQt6>=6.6.0
 
 # Para construcción de ejecutables
 pyinstaller>=5.10.0
@@ -17,7 +18,6 @@ pyinstaller>=5.10.0
 
 # Dependencias del sistema (incluidas en Python)
 # sqlite3 - Incluido en Python estándar
-# tkinter - Incluido en Python estándar  
 # xml.etree.ElementTree - Incluido en Python estándar
 # zipfile - Incluido en Python estándar
 # datetime - Incluido en Python estándar
@@ -26,3 +26,4 @@ pyinstaller>=5.10.0
 # hashlib - Incluido en Python estándar
 # json - Incluido en Python estándar
 # csv - Incluido en Python estándar
+# decimal - Incluido en Python estándar
