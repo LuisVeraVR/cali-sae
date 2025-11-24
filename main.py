@@ -10,12 +10,16 @@ from PyQt6.QtWidgets import QApplication
 from src.domain.use_cases.authenticate_user import AuthenticateUser, ChangePassword
 from src.domain.use_cases.process_invoices import ProcessInvoices
 from src.domain.use_cases.process_jcr_invoices import ProcessJCRInvoices
+from src.domain.use_cases.process_paisano_invoices import ProcessPaisanoInvoices
 from src.domain.use_cases.generate_report import GetReports, ExportReports
 from src.domain.use_cases.check_updates import CheckUpdates, DownloadUpdate
 
 # Infrastructure layer
 from src.infrastructure.database.sqlite_user_repository import SQLiteUserRepository
 from src.infrastructure.database.sqlite_report_repository import SQLiteReportRepository
+from src.infrastructure.database.paisano_conversion_repository import (
+    PaisanoConversionRepository,
+)
 from src.infrastructure.parsers.xml_invoice_parser import XMLInvoiceParser
 from src.infrastructure.exporters.invoice_exporter import InvoiceExporter
 from src.infrastructure.exporters.csv_exporter import CSVExporter
@@ -45,6 +49,7 @@ class Application:
         # Initialize repositories
         self.user_repository = SQLiteUserRepository(self.DB_PATH)
         self.report_repository = SQLiteReportRepository(self.DB_PATH)
+        self.paisano_conversion_repository = PaisanoConversionRepository(self.DB_PATH)
 
         # Initialize infrastructure services
         self.xml_parser = XMLInvoiceParser()
@@ -52,8 +57,7 @@ class Application:
         self.csv_exporter = CSVExporter()
         self.jcr_reggis_exporter = JCRReggisExporter()
         self.github_updater = GitHubUpdater(
-            repo_owner="LuisVeraVR",
-            repo_name="cali-sae"
+            repo_owner="LuisVeraVR", repo_name="cali-sae"
         )
 
         # Initialize use cases for authentication
@@ -62,8 +66,7 @@ class Application:
 
         # Initialize auth controller
         self.auth_controller = AuthController(
-            self.authenticate_use_case,
-            self.change_password_use_case
+            self.authenticate_use_case, self.change_password_use_case
         )
 
         # Windows
@@ -91,44 +94,45 @@ class Application:
 
         # Initialize use cases that require user context
         self.process_invoices_use_case = ProcessInvoices(
-            self.report_repository,
-            self.xml_parser,
-            self.invoice_exporter
+            self.report_repository, self.xml_parser, self.invoice_exporter
         )
 
         self.process_jcr_invoices_use_case = ProcessJCRInvoices(
             self.report_repository,
             None,  # csv_parser - will be created per file
-            self.jcr_reggis_exporter
+            self.jcr_reggis_exporter,
+        )
+
+        self.process_paisano_invoices_use_case = ProcessPaisanoInvoices(
+            self.report_repository,
+            self.xml_parser,
+            self.jcr_reggis_exporter,
+            self.paisano_conversion_repository,
         )
 
         self.get_reports_use_case = GetReports(self.report_repository)
 
         self.export_reports_use_case = ExportReports(
-            self.report_repository,
-            self.csv_exporter
+            self.report_repository, self.csv_exporter
         )
 
-        self.check_updates_use_case = CheckUpdates(
-            self.github_updater,
-            self.VERSION
-        )
-
+        self.check_updates_use_case = CheckUpdates(self.github_updater, self.VERSION)
         self.download_update_use_case = DownloadUpdate(self.github_updater)
 
         # Initialize main controller
         self.main_controller = MainController(
             self.process_invoices_use_case,
             self.process_jcr_invoices_use_case,
+            self.process_paisano_invoices_use_case,
             self.check_updates_use_case,
             self.download_update_use_case,
-            self.current_user
+            self.current_user,
+            self.paisano_conversion_repository,
         )
 
         # Initialize reports controller
         self.reports_controller = ReportsController(
-            self.get_reports_use_case,
-            self.export_reports_use_case
+            self.get_reports_use_case, self.export_reports_use_case
         )
 
         # Show main window
@@ -136,10 +140,7 @@ class Application:
 
     def show_main_window(self):
         """Show main application window"""
-        self.main_window = MainWindow(
-            self.main_controller,
-            self.reports_controller
-        )
+        self.main_window = MainWindow(self.main_controller, self.reports_controller)
         self.main_window.logout_requested.connect(self.on_logout)
         self.main_window.reports_requested.connect(self.show_reports_window)
         self.main_window.show()
@@ -149,8 +150,7 @@ class Application:
         if self.main_controller.is_admin():
             if self.reports_window is None or not self.reports_window.isVisible():
                 self.reports_window = ReportsWindow(
-                    self.reports_controller,
-                    self.main_window
+                    self.reports_controller, self.main_window
                 )
                 self.reports_window.show()
             else:

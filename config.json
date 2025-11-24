@@ -1,144 +1,144 @@
-{
-  "version": "1.0.0",
-  "last_updated": "2024-09-14T15:30:00Z",
-  "app_info": {
-    "name": "Sistema de Facturas Electrónicas",
-    "description": "Extractor automático de datos de facturas electrónicas DIAN",
-    "repository": "https://github.com/LuisVeraVR/operator-auto",
-    "support_email": "soporte@empresa.com"
-  },
-  "companies": {
-    "AGROBUITRON": {
-      "enabled": true,
-      "display_name": "AGROBUITRON SAS",
-      "nit": "901247953",
-      "xml_namespaces": {
-        "cbc": "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
-        "cac": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
-        "ext": "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2",
-        "sts": "dian:gov:co:facturaelectronica:Structures-2-1"
-      },
-      "field_mappings": {
-        "invoice_id": ".//cbc:ID",
-        "issue_date": ".//cbc:IssueDate",
-        "due_date": ".//cbc:DueDate",
-        "currency": ".//cbc:DocumentCurrencyCode",
-        "supplier_nit": ".//cac:AccountingSupplierParty/cac:Party//cbc:CompanyID",
-        "supplier_name": ".//cac:AccountingSupplierParty/cac:Party//cbc:RegistrationName",
-        "customer_nit": ".//cac:AccountingCustomerParty/cac:Party//cbc:CompanyID",
-        "customer_name": ".//cac:AccountingCustomerParty/cac:Party//cbc:RegistrationName",
-        "city": ".//cac:AccountingSupplierParty/cac:Party//cbc:CityName"
-      },
-      "output_fields": [
-        "N° Factura",
-        "Nombre Producto", 
-        "Codigo Subyacente",
-        "Unidad Medida",
-        "Cantidad",
-        "Precio Unitario",
-        "Precio Total",
-        "Fecha Factura",
-        "Fecha Pago",
-        "Nit Comprador",
-        "Nombre Comprador",
-        "Nit Vendedor", 
-        "Nombre Vendedor",
-        "Principal V,C",
-        "Municipio",
-        "Iva",
-        "Descripción",
-        "Activa Factura",
-        "Activa Bodega",
-        "Incentivo",
-        "Cantidad Original",
-        "Moneda"
-      ],
-      "default_values": {
-        "Principal V,C": "V",
-        "Activa Factura": "Sí",
-        "Activa Bodega": "Sí", 
-        "Descripción": "",
-        "Incentivo": ""
-      },
-      "validation_rules": {
-        "required_fields": ["N° Factura", "Nombre Producto", "Cantidad"],
-        "numeric_fields": ["Cantidad", "Precio Unitario", "Precio Total"],
-        "date_fields": ["Fecha Factura", "Fecha Pago"]
-      }
-    },
-    "MG": {
-      "enabled": false,
-      "display_name": "MG COMPANY",
-      "status": "development",
-      "message": "Funcionalidad en desarrollo - Disponible próximamente",
-      "estimated_completion": "2024-10-15"
-    },
-    "ROSAS": {
-      "enabled": false,
-      "display_name": "ROSAS CORP",
-      "status": "development", 
-      "message": "Funcionalidad en desarrollo - Disponible próximamente",
-      "estimated_completion": "2024-10-30"
-    }
-  },
-  "unit_codes": {
-    "KGM": "Kg",
-    "LTR": "Lt", 
-    "LT": "Lt",
-    "NIU": "Un",
-    "MTR": "Mt",
-    "HUR": "Hr",
-    "GRM": "Gr",
-    "TNE": "Tn",
-    "MLT": "Ml",
-    "CMT": "Cm",
-    "M2": "M2",
-    "M3": "M3",
-    "DAY": "Día",
-    "MON": "Mes",
-    "ANN": "Año",
-    "PCE": "Pz",
-    "SET": "Set",
-    "PAR": "Par",
-    "DZN": "Docena",
-    "BOX": "Caja",
-    "BAG": "Bolsa",
-    "BTL": "Botella",
-    "CAN": "Lata"
-  },
-  "currency_codes": {
-    "COP": "1",
-    "USD": "2", 
-    "EUR": "3",
-    "GBP": "4"
-  },
-  "app_settings": {
-    "csv_separator": ";",
-    "decimal_places": 5,
-    "decimal_separator": ",",
-    "date_format": "%Y-%m-%d",
-    "encoding": "utf-8-sig",
-    "auto_update_check": true,
-    "update_check_interval_hours": 4,
-    "max_concurrent_files": 50,
-    "backup_processed_files": false
-  },
-  "security": {
-    "password_hint": "Facturas + Electronicas + Año actual",
-    "session_timeout_minutes": 120,
-    "max_login_attempts": 3
-  },
-  "ui_settings": {
-    "theme": "default",
-    "window_size": "900x700",
-    "show_progress_details": true,
-    "auto_clear_completed": false
-  },
-  "messages": {
-    "welcome": "Bienvenido al Sistema de Facturas Electrónicas",
-    "processing_complete": "Procesamiento completado exitosamente",
-    "no_files_selected": "Por favor seleccione al menos un archivo ZIP",
-    "invalid_xml": "Archivo XML inválido o corrupto",
-    "update_available": "Nueva versión disponible para descarga"
-  }
+{
+  "version": "1.0.0",
+  "last_updated": "2024-09-14T15:30:00Z",
+  "app_info": {
+    "name": "Sistema de Facturas Electrónicas",
+    "description": "Extractor automático de datos de facturas electrónicas DIAN",
+    "repository": "https://github.com/LuisVeraVR/operator-auto",
+    "support_email": "soporte@empresa.com"
+  },
+  "companies": {
+    "AGROBUITRON": {
+      "enabled": true,
+      "display_name": "AGROBUITRON SAS",
+      "nit": "901247953",
+      "xml_namespaces": {
+        "cbc": "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+        "cac": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
+        "ext": "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2",
+        "sts": "dian:gov:co:facturaelectronica:Structures-2-1"
+      },
+      "field_mappings": {
+        "invoice_id": ".//cbc:ID",
+        "issue_date": ".//cbc:IssueDate",
+        "due_date": ".//cbc:DueDate",
+        "currency": ".//cbc:DocumentCurrencyCode",
+        "supplier_nit": ".//cac:AccountingSupplierParty/cac:Party//cbc:CompanyID",
+        "supplier_name": ".//cac:AccountingSupplierParty/cac:Party//cbc:RegistrationName",
+        "customer_nit": ".//cac:AccountingCustomerParty/cac:Party//cbc:CompanyID",
+        "customer_name": ".//cac:AccountingCustomerParty/cac:Party//cbc:RegistrationName",
+        "city": ".//cac:AccountingSupplierParty/cac:Party//cbc:CityName"
+      },
+      "output_fields": [
+        "N° Factura",
+        "Nombre Producto", 
+        "Codigo Subyacente",
+        "Unidad Medida",
+        "Cantidad",
+        "Precio Unitario",
+        "Precio Total",
+        "Fecha Factura",
+        "Fecha Pago",
+        "Nit Comprador",
+        "Nombre Comprador",
+        "Nit Vendedor", 
+        "Nombre Vendedor",
+        "Principal V,C",
+        "Municipio",
+        "Iva",
+        "Descripción",
+        "Activa Factura",
+        "Activa Bodega",
+        "Incentivo",
+        "Cantidad Original",
+        "Moneda"
+      ],
+      "default_values": {
+        "Principal V,C": "V",
+        "Activa Factura": "Sí",
+        "Activa Bodega": "Sí", 
+        "Descripción": "",
+        "Incentivo": ""
+      },
+      "validation_rules": {
+        "required_fields": ["N° Factura", "Nombre Producto", "Cantidad"],
+        "numeric_fields": ["Cantidad", "Precio Unitario", "Precio Total"],
+        "date_fields": ["Fecha Factura", "Fecha Pago"]
+      }
+    },
+    "MG": {
+      "enabled": false,
+      "display_name": "MG COMPANY",
+      "status": "development",
+      "message": "Funcionalidad en desarrollo - Disponible próximamente",
+      "estimated_completion": "2024-10-15"
+    },
+    "ROSAS": {
+      "enabled": false,
+      "display_name": "ROSAS CORP",
+      "status": "development", 
+      "message": "Funcionalidad en desarrollo - Disponible próximamente",
+      "estimated_completion": "2024-10-30"
+    }
+  },
+  "unit_codes": {
+    "KGM": "Kg",
+    "LTR": "Lt", 
+    "LT": "Lt",
+    "NIU": "Un",
+    "MTR": "Mt",
+    "HUR": "Hr",
+    "GRM": "Gr",
+    "TNE": "Tn",
+    "MLT": "Ml",
+    "CMT": "Cm",
+    "M2": "M2",
+    "M3": "M3",
+    "DAY": "Día",
+    "MON": "Mes",
+    "ANN": "Año",
+    "PCE": "Pz",
+    "SET": "Set",
+    "PAR": "Par",
+    "DZN": "Docena",
+    "BOX": "Caja",
+    "BAG": "Bolsa",
+    "BTL": "Botella",
+    "CAN": "Lata"
+  },
+  "currency_codes": {
+    "COP": "1",
+    "USD": "2", 
+    "EUR": "3",
+    "GBP": "4"
+  },
+  "app_settings": {
+    "csv_separator": ";",
+    "decimal_places": 5,
+    "decimal_separator": ",",
+    "date_format": "%Y-%m-%d",
+    "encoding": "utf-8-sig",
+    "auto_update_check": true,
+    "update_check_interval_hours": 4,
+    "max_concurrent_files": 50,
+    "backup_processed_files": false
+  },
+  "security": {
+    "password_hint": "Facturas + Electronicas + Año actual",
+    "session_timeout_minutes": 120,
+    "max_login_attempts": 3
+  },
+  "ui_settings": {
+    "theme": "default",
+    "window_size": "900x700",
+    "show_progress_details": true,
+    "auto_clear_completed": false
+  },
+  "messages": {
+    "welcome": "Bienvenido al Sistema de Facturas Electrónicas",
+    "processing_complete": "Procesamiento completado exitosamente",
+    "no_files_selected": "Por favor seleccione al menos un archivo ZIP",
+    "invalid_xml": "Archivo XML inválido o corrupto",
+    "update_available": "Nueva versión disponible para descarga"
+  }
 }
