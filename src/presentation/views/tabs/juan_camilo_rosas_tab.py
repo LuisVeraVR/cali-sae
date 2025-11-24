@@ -5,7 +5,7 @@ Processes CSV/TXT files and converts to Reggis format with unit conversions
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QListWidget, QFileDialog, QProgressBar, QMessageBox, QFrame,
-    QLineEdit, QGroupBox
+    QLineEdit, QGroupBox, QScrollArea
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -48,7 +48,18 @@ class JuanCamiloRosasTab(QWidget):
 
     def init_ui(self):
         """Initialize the user interface"""
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        main_layout.addWidget(scroll_area)
+
+        content_widget = QWidget()
+        scroll_area.setWidget(content_widget)
+
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
@@ -117,7 +128,6 @@ class JuanCamiloRosasTab(QWidget):
         layout.addWidget(process_btn)
 
         layout.addStretch()
-        self.setLayout(layout)
 
     def _create_csv_section(self) -> QFrame:
         """Create CSV/TXT files selection section"""
