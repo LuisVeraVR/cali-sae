@@ -10,13 +10,19 @@ from typing import Optional
 class Product:
     """Product line item in an invoice"""
 
+    # Datos principales
     name: str
     underlying_code: str
-    unit_of_measure: str
-    quantity: Decimal
+    unit_of_measure: str        # En JCR siempre la estamos dejando en "Kg"
+    quantity: Decimal           # Cantidad CONVERTIDA (kilos)
     unit_price: Decimal
     total_price: Decimal
     iva_percentage: Decimal
+
+    # NUEVO: cantidad original tal como viene en el archivo del cliente
+    original_quantity: Optional[Decimal] = None
+
+    # Meta
     line_number: Optional[int] = None
 
     def format_decimal(self, value: Decimal, decimals: int = 5) -> str:
@@ -25,7 +31,7 @@ class Product:
         return formatted.replace('.', ',')
 
     def get_formatted_quantity(self) -> str:
-        """Get quantity formatted with 5 decimals and comma"""
+        """Get converted quantity formatted with 5 decimals and comma"""
         return self.format_decimal(self.quantity)
 
     def get_formatted_unit_price(self) -> str:
@@ -40,5 +46,18 @@ class Product:
         """Get IVA percentage formatted with 5 decimals and comma"""
         return self.format_decimal(self.iva_percentage)
 
+    def get_formatted_original_quantity(self) -> str:
+        """
+        Get original quantity (from client file) formatted with 5 decimals and comma.
+        Si por alguna razón no se llenó, usa la quantity convertida como fallback.
+        """
+        value = self.original_quantity if self.original_quantity is not None else self.quantity
+        return self.format_decimal(value)
+
     def __repr__(self) -> str:
-        return f"Product(name='{self.name}', quantity={self.quantity}, unit_price={self.unit_price})"
+        return (
+            f"Product(name='{self.name}', "
+            f"quantity={self.quantity}, "
+            f"unit_price={self.unit_price}, "
+            f"original_quantity={self.original_quantity})"
+        )

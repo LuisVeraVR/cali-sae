@@ -214,4 +214,4 @@ https://github.com/LuisVeraVR/cali-sae/issues
 ---
 
 **Versión:** 2.1.0
-**Última actualización:** Noviembre 2024
+**Última actualización:** Noviembre 2025

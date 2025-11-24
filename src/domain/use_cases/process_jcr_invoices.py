@@ -18,7 +18,7 @@ class ProcessJCRInvoices:
     def __init__(
         self,
         report_repository: ReportRepositoryInterface,
-        csv_parser,  # JCRCsvParser - injected from infrastructure
+        csv_parser,  # JCRCsvParser - injected from infrastructure (no se usa directamente aquí)
         reggis_exporter  # JCRReggisExporter - injected from infrastructure
     ):
         self.report_repository = report_repository
@@ -69,10 +69,9 @@ class ProcessJCRInvoices:
                 for invoice in invoices:
                     for product in invoice.products:
                         key = (invoice.invoice_number, product.name)
-                        # The original quantity is stored separately
-                        # For now, we'll use the converted quantity
-                        # This should be enhanced to store actual original from file
-                        original_quantities[key] = product.quantity
+                        # Aquí usamos SIEMPRE la cantidad original del archivo,
+                        # no la convertida a kilos
+                        original_quantities[key] = product.original_quantity
 
                     # Set municipality if not already set
                     if not invoice.seller_municipality:

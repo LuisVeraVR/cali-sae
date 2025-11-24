@@ -14,7 +14,7 @@ from ...domain.entities.product import Product
 class UnitConverter:
     """Handles unit conversions for Juan Camilo Rosas products"""
 
-    # Conversion table: {unit_name: {units: X, weight_per_unit_kg: Y, total_kg: Z}}
+    # Conversion table: {unit_name: {units: X, weight_description: Y, total_kg: Z}}
     CONVERSIONS = {
         'MEGA': {
             'units': 5,
@@ -29,7 +29,7 @@ class UnitConverter:
         'LIBRAS': {
             'units': 10,
             'weight_description': '4 LIBRAS C/U',
-            'total_kg': Decimal('20')
+            'total_kg': Decimal('20')  # 4 lb * 10 und ≈ 20 kg (regla de negocio)
         },
         'KAO': {
             'units': 20,
@@ -49,22 +49,43 @@ class UnitConverter:
     }
 
     @classmethod
+    def detect_unit_from_product_name(cls, product_name: str, unit_of_measure: str) -> str:
+        """
+        Detect unit type based on product name text plus unit_of_measure fallback.
+        Example: 'Panela 4 libras cjx10 und. cod 210048' -> 'LIBRAS'
+        """
+        name = (product_name or "").upper()
+        um = (unit_of_measure or "").upper().strip()
+
+        if "MEGA" in name:
+            return "MEGA"
+        if "REDONDA" in name:
+            return "REDONDA"
+        # Panela 4 libras cjx10 und -> usamos LIBRAS para aplicar 20 kg por unidad
+        if "4 LIBRAS" in name or "4 LIBRA" in name:
+            return "LIBRAS"
+        if "PASTUANIO" in name or "PASTU" in name:
+            return "PASTUANIO"
+        if "PASTILLA" in name and "LIBRA" in name:
+            return "PASTILLA LIBRA"
+        if "KAO" in name:
+            return "KAO"
+        if "KILO" in name or "KILOS" in name:
+            return "PASTUANIO"
+
+        # Fallback: lo que venga en UNIDAD DE MEDIDA o el nombre
+        return um or name
+
+    @classmethod
     def convert_quantity(cls, unit_name: str, original_quantity: Decimal) -> Decimal:
         """
         Convert original quantity to the converted quantity based on unit type
-
-        Args:
-            unit_name: Name of the unit (MEGA, REDONDA, etc.)
-            original_quantity: Original quantity from the input file
-
-        Returns:
-            Converted quantity in the appropriate unit
         """
-        unit_name_upper = unit_name.strip().upper()
+        unit_name_upper = (unit_name or '').strip().upper()
 
         if unit_name_upper in cls.CONVERSIONS:
             conversion = cls.CONVERSIONS[unit_name_upper]
-            # Converted quantity = original_quantity * total_kg
+            # Converted quantity = original_quantity * total_kg (regla de negocio)
             return original_quantity * conversion['total_kg']
 
         # If no conversion found, return original quantity
@@ -75,8 +96,9 @@ class UnitConverter:
         """
         Get the unit of measure for Reggis format
         Returns: Kg, Un, or Lt
+        (Hoy ya no lo usamos para el export, pero lo dejamos por si se requiere)
         """
-        unit_name_upper = unit_name.strip().upper()
+        unit_name_upper = (unit_name or '').strip().upper()
 
         # Most conversions are in Kg
         if unit_name_upper in ['MEGA', 'REDONDA', 'LIBRAS', 'PASTUANIO']:
@@ -164,10 +186,13 @@ class JCRCsvParser:
 
         for row in reader:
             # Normalize column names (remove extra spaces)
-            normalized_row = {k.strip(): v.strip() if isinstance(v, str) else v
-                            for k, v in row.items()}
+            normalized_row = {
+                (k.strip() if isinstance(k, str) else k):
+                    (v.strip() if isinstance(v, str) else v)
+                for k, v in row.items()
+            }
 
-            invoice_number = normalized_row.get('NUMERO DE FACTURA', '').strip()
+            invoice_number = (normalized_row.get('NUMERO DE FACTURA', '') or '').strip()
 
             if not invoice_number:
                 continue
@@ -201,8 +226,8 @@ class JCRCsvParser:
                 seller_nit=self.SELLER_NIT,
                 seller_name=self.SELLER_NAME,
                 seller_municipality='',  # Will be filled from UI or config
-                buyer_nit=first_row.get('IDENTIFICACION', '').strip(),
-                buyer_name=first_row.get('NOMBRE CLIENTE', '').strip()
+                buyer_nit=(first_row.get('IDENTIFICACION', '') or '').strip(),
+                buyer_name=(first_row.get('NOMBRE CLIENTE', '') or '').strip()
             )
 
             # Add products
@@ -220,13 +245,22 @@ class JCRCsvParser:
     def _create_product(self, row: Dict[str, Any]) -> Product:
         """Create a Product entity from a row"""
         try:
-            product_name = row.get('NOMBRE PRODUCTO', '').strip()
-            unit_of_measure = row.get('UNIDAD DE MEDIDA', '').strip()
+            product_name = (row.get('NOMBRE PRODUCTO', '') or '').strip()
+            unit_of_measure = (row.get('UNIDAD DE MEDIDA', '') or '').strip()
             original_quantity = self._parse_decimal(row.get('CANTIDAD', '0'))
             valor_bruto = self._parse_decimal(row.get('VALOR BRUTO', '0'))
 
-            # Convert quantity using UnitConverter
-            converted_quantity = UnitConverter.convert_quantity(unit_of_measure, original_quantity)
+            # Detect unit key based on product name + unidad de medida
+            unit_key = UnitConverter.detect_unit_from_product_name(
+                product_name,
+                unit_of_measure
+            )
+
+            # Convert quantity using UnitConverter and business rules
+            converted_quantity = UnitConverter.convert_quantity(
+                unit_key,
+                original_quantity
+            )
 
             # Calculate unit price: valor_bruto / converted_quantity
             if converted_quantity > 0:
@@ -234,17 +268,18 @@ class JCRCsvParser:
             else:
                 unit_price = Decimal('0')
 
-            # Get the appropriate unit measure for Reggis
-            reggis_unit = UnitConverter.get_unit_measure(unit_of_measure)
+            # TODOS los productos se exportan en Kg (porque todos tienen conversión a kilo)
+            reggis_unit = "Kg"
 
             product = Product(
                 name=product_name,
                 underlying_code='SPN-1',  # Fixed value
-                unit_of_measure=reggis_unit,
-                quantity=converted_quantity,  # Converted quantity
+                unit_of_measure=reggis_unit,          # SIEMPRE Kg
+                quantity=converted_quantity,          # Cantidad convertida a kilos
                 unit_price=unit_price,
                 total_price=valor_bruto,
-                iva_percentage=Decimal('0')  # Will be set later if needed
+                iva_percentage=Decimal('0'),          # Se maneja fuera si se requiere
+                original_quantity=original_quantity   # Cantidad original del archivo
             )
 
             return product
@@ -270,35 +305,51 @@ class JCRCsvParser:
 
         for fmt in date_formats:
             try:
-                return datetime.strptime(date_str.strip(), fmt)
+                return datetime.strptime(str(date_str).strip(), fmt)
             except ValueError:
                 continue
 
         # If no format matches, return current date
         return datetime.now()
 
-    def _parse_decimal(self, value: str) -> Decimal:
-        """Parse string to Decimal, handling different formats"""
+    def _parse_decimal(self, value) -> Decimal:
+        """Parse value to Decimal, handling different formats (Colombian style included)"""
+        if value is None:
+            return Decimal('0')
+
+        # Si ya viene como Decimal/int/float, lo convertimos a string
+        if not isinstance(value, str):
+            value = str(value)
+
         if not value:
             return Decimal('0')
 
         # Remove currency symbols and spaces
         cleaned = value.strip().replace('$', '').replace(' ', '')
 
-        # Handle comma as thousands separator and dot as decimal
+        # Case: has BOTH comma and dot (e.g. 1,234.56 or 1.234,56)
         if ',' in cleaned and '.' in cleaned:
-            # Format like 1,234.56
+            # Asumimos: coma miles, punto decimal (1,234.56)
             cleaned = cleaned.replace(',', '')
         elif ',' in cleaned:
-            # Could be either thousands or decimal
-            # If more than 2 digits after comma, it's thousands
+            # Could be thousands or decimal separator
             parts = cleaned.split(',')
             if len(parts[-1]) > 2:
+                # 1,234,567 -> 1234567
                 cleaned = cleaned.replace(',', '')
             else:
+                # 840,50 -> 840.50
                 cleaned = cleaned.replace(',', '.')
+        elif '.' in cleaned:
+            # Only dots present: can be thousands separator (840.000) or decimal (840.5)
+            parts = cleaned.split('.')
+            # If all groups after the first are length 3, treat as thousands separator
+            # 840.000 -> ['840', '000'] -> len('000') == 3 -> thousands
+            # 1.234.567 -> ['1', '234', '567'] -> OK
+            if len(parts) > 1 and all(len(p) == 3 for p in parts[1:]):
+                cleaned = ''.join(parts)
 
         try:
             return Decimal(cleaned)
-        except:
+        except Exception:
             return Decimal('0')
