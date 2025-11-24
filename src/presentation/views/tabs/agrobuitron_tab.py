@@ -123,9 +123,10 @@ class AgrobuitronTab(QWidget):
     def _create_zip_section(self) -> QFrame:
         """Create ZIP files selection section"""
         frame = QFrame()
-        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 10px; }")
+        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 15px; }")
 
         layout = QVBoxLayout()
+        layout.setSpacing(10)
 
         label = QLabel("Archivos ZIP:")
         label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
@@ -159,9 +160,10 @@ class AgrobuitronTab(QWidget):
     def _create_output_section(self) -> QFrame:
         """Create output format selection section"""
         frame = QFrame()
-        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 10px; }")
+        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 15px; }")
 
         layout = QVBoxLayout()
+        layout.setSpacing(10)
 
         label = QLabel("Formato de Salida:")
         label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
@@ -186,37 +188,40 @@ class AgrobuitronTab(QWidget):
     def _create_excel_section(self) -> QFrame:
         """Create Excel file selection section"""
         frame = QFrame()
-        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 10px; }")
+        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 15px; }")
 
         layout = QVBoxLayout()
+        layout.setSpacing(10)
 
-        # Excel file selection
-        file_layout = QHBoxLayout()
+        # Excel file selection label
         file_label = QLabel("Archivo Excel:")
         file_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
-        file_layout.addWidget(file_label)
+        layout.addWidget(file_label)
 
+        # Path and button in horizontal layout
+        file_row = QHBoxLayout()
         self.excel_path_label = QLabel("Ninguno seleccionado")
         self.excel_path_label.setStyleSheet("color: #7f8c8d;")
-        file_layout.addWidget(self.excel_path_label)
+        self.excel_path_label.setWordWrap(True)
+        self.excel_path_label.setMinimumWidth(300)
+        file_row.addWidget(self.excel_path_label, 1)
 
         select_excel_btn = QPushButton("Seleccionar...")
+        select_excel_btn.setMinimumWidth(120)
         select_excel_btn.clicked.connect(self.select_excel_file)
         select_excel_btn.setStyleSheet(self._get_button_style("#3498db"))
-        file_layout.addWidget(select_excel_btn)
+        file_row.addWidget(select_excel_btn)
 
-        layout.addLayout(file_layout)
+        layout.addLayout(file_row)
 
         # Sheet selection
-        sheet_layout = QHBoxLayout()
         sheet_label = QLabel("Hoja:")
         sheet_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
-        sheet_layout.addWidget(sheet_label)
+        layout.addWidget(sheet_label)
 
         self.sheet_combo = QComboBox()
-        sheet_layout.addWidget(self.sheet_combo)
-
-        layout.addLayout(sheet_layout)
+        self.sheet_combo.setMinimumHeight(35)
+        layout.addWidget(self.sheet_combo)
 
         frame.setLayout(layout)
         return frame

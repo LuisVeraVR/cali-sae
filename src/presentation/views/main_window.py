@@ -34,7 +34,8 @@ class MainWindow(QMainWindow):
         user_type = self.main_controller.get_user_type()
 
         self.setWindowTitle(f"Sistema de Facturas Electrónicas - Usuario: {username}")
-        self.setGeometry(100, 100, 1000, 750)
+        self.setMinimumSize(1100, 800)
+        self.resize(1200, 850)
         self.setStyleSheet("background-color: #f0f0f0;")
 
         # Central widget

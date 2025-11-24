@@ -30,12 +30,13 @@ class AuthWindow(QWidget):
     def init_ui(self):
         """Initialize the user interface"""
         self.setWindowTitle("Sistema de Facturas Electrónicas - Iniciar Sesión")
-        self.setFixedSize(450, 500)
+        self.setMinimumSize(550, 600)
+        self.setMaximumSize(650, 700)
         self.setStyleSheet("background-color: #f0f0f0;")
 
         # Main layout
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setContentsMargins(50, 40, 50, 40)
         main_layout.setSpacing(20)
 
         # Title
@@ -282,11 +283,12 @@ class AuthWindow(QWidget):
         """Get input field stylesheet"""
         return """
             QLineEdit {
-                padding: 10px;
+                padding: 12px;
                 border: 2px solid #bdc3c7;
                 border-radius: 5px;
-                font-size: 10pt;
+                font-size: 11pt;
                 background-color: white;
+                min-height: 20px;
             }
             QLineEdit:focus {
                 border: 2px solid #3498db;

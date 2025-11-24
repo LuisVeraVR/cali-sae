@@ -23,7 +23,8 @@ class ReportsWindow(QDialog):
     def init_ui(self):
         """Initialize the user interface"""
         self.setWindowTitle("Panel de Administración - Reportes")
-        self.setGeometry(100, 100, 900, 600)
+        self.setMinimumSize(1000, 650)
+        self.resize(1100, 700)
         self.setStyleSheet("background-color: #f0f0f0;")
 
         layout = QVBoxLayout()
