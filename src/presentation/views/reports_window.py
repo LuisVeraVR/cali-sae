@@ -22,7 +22,7 @@ class ReportsWindow(QDialog):
 
     def init_ui(self):
         """Initialize the user interface"""
-        self.setWindowTitle("Panel de Administración - Reportes")
+        self.setWindowTitle("Cali SAE - Reportes")
         self.setMinimumSize(1000, 650)
         self.resize(1100, 700)
         self.setStyleSheet("background-color: #f0f0f0;")
@@ -32,11 +32,17 @@ class ReportsWindow(QDialog):
         layout.setSpacing(15)
 
         # Title
-        title = QLabel("Panel de Administración - Reportes Generados")
-        title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title = QLabel("Cali SAE - Reportes")
+        title.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         title.setStyleSheet("color: #2c3e50;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
+
+        subtitle = QLabel("Panel de Administración")
+        subtitle.setFont(QFont("Arial", 12))
+        subtitle.setStyleSheet("color: #7f8c8d; margin-bottom: 10px;")
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(subtitle)
 
         # Table
         self.table = QTableWidget()

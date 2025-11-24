@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
         username = self.main_controller.get_username()
         user_type = self.main_controller.get_user_type()
 
-        self.setWindowTitle(f"Sistema de Facturas Electrónicas - Usuario: {username}")
+        self.setWindowTitle(f"Cali SAE - Usuario: {username}")
         self.setMinimumSize(1100, 800)
         self.resize(1200, 850)
         self.setStyleSheet("background-color: #f0f0f0;")
@@ -100,11 +100,17 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
 
         # Title
-        title = QLabel("Sistema de Extracción de Facturas Electrónicas")
-        title.setFont(QFont("Arial", 18, QFont.Weight.Bold))
+        title = QLabel("Cali SAE")
+        title.setFont(QFont("Arial", 20, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("color: #2c3e50;")
         layout.addWidget(title)
+
+        subtitle = QLabel("Sistema de Extracción de Facturas Electrónicas")
+        subtitle.setFont(QFont("Arial", 12))
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setStyleSheet("color: #7f8c8d; margin-bottom: 10px;")
+        layout.addWidget(subtitle)
 
         # Tabs
         self.tabs = QTabWidget()

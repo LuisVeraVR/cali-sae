@@ -24,12 +24,13 @@ class AuthWindow(QWidget):
         """
         super().__init__()
         self.auth_controller = auth_controller
+        self.login_frame = None
         self.change_password_frame = None
         self.init_ui()
 
     def init_ui(self):
         """Initialize the user interface"""
-        self.setWindowTitle("Sistema de Facturas Electrónicas - Iniciar Sesión")
+        self.setWindowTitle("Cali SAE - Iniciar Sesión")
         self.setMinimumSize(550, 600)
         self.setMaximumSize(650, 700)
         self.setStyleSheet("background-color: #f0f0f0;")
@@ -40,14 +41,14 @@ class AuthWindow(QWidget):
         main_layout.setSpacing(20)
 
         # Title
-        title = QLabel("Sistema de Facturas")
+        title = QLabel("Cali SAE")
         title.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("color: #2c3e50;")
         main_layout.addWidget(title)
 
-        subtitle = QLabel("Iniciar Sesión")
-        subtitle.setFont(QFont("Arial", 12))
+        subtitle = QLabel("Sistema de Facturas Electrónicas")
+        subtitle.setFont(QFont("Arial", 11))
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setStyleSheet("color: #7f8c8d;")
         main_layout.addWidget(subtitle)
@@ -55,8 +56,8 @@ class AuthWindow(QWidget):
         main_layout.addSpacing(20)
 
         # Login frame
-        login_frame = self._create_login_frame()
-        main_layout.addWidget(login_frame)
+        self.login_frame = self._create_login_frame()
+        main_layout.addWidget(self.login_frame)
 
         # Change password frame (initially hidden)
         self.change_password_frame = self._create_change_password_frame()
@@ -226,13 +227,13 @@ class AuthWindow(QWidget):
 
     def show_change_password(self):
         """Show change password frame"""
-        self.findChildren(QFrame)[0].hide()  # Hide login frame
+        self.login_frame.hide()
         self.change_password_frame.show()
 
     def hide_change_password(self):
         """Hide change password frame"""
         self.change_password_frame.hide()
-        self.findChildren(QFrame)[0].show()  # Show login frame
+        self.login_frame.show()
         self._clear_change_password_fields()
 
     def handle_change_password(self):

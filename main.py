@@ -1,5 +1,6 @@
 """
-Main Entry Point - Sistema de Facturas Electrónicas
+Main Entry Point - Cali SAE
+Sistema de Facturas Electrónicas
 Clean Architecture with PyQt6
 """
 import sys
@@ -36,7 +37,7 @@ class Application:
 
     def __init__(self):
         self.app = QApplication(sys.argv)
-        self.app.setApplicationName("Sistema de Facturas Electrónicas")
+        self.app.setApplicationName("Cali SAE")
         self.app.setApplicationVersion(self.VERSION)
 
         # Initialize repositories
