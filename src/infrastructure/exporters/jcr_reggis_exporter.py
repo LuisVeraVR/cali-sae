@@ -1,3 +1,4 @@
+
 """
 Reggis CSV Exporter for Juan Camilo Rosas
 Exports invoices to the specific Reggis format
@@ -16,33 +17,33 @@ class JCRReggisExporter:
     Exports Juan Camilo Rosas invoices to Reggis CSV format
 
     Reggis Format Columns:
-    N° Factura, Nombre Producto, Codigo Subyacente, Unidad Medida en Kg,Un,Lt,
+    N?? Factura, Nombre Producto, Codigo Subyacente, Unidad Medida en Kg,Un,Lt,
     Cantidad (5 decimales - separador coma), Precio Unitario (5 decimales - separador coma),
-    Fecha Factura Año-Mes-Dia, Fecha Pago Año-Mes-Dia, Nit Comprador (Existente),
+    Fecha Factura A?o-Mes-Dia, Fecha Pago A?o-Mes-Dia, Nit Comprador (Existente),
     Nombre Comprador, Nit Vendedor (Existente), Nombre Vendedor, Principal V,C,
-    Municipio (Nombre Exacto de la Ciudad), Iva (N°%), Descripción, Activa,
+    Municipio (Nombre Exacto de la Ciudad), Iva (N?%), Descripci?n, Activa,
     Factura Activa, Bodega, Incentivo, Cantidad Original (5 decimales - separador coma),
     Moneda (1,2,3), Valor Total
     """
 
     # Reggis column order
     REGGIS_COLUMNS = [
-        'N° Factura',
+        'N?? Factura',
         'Nombre Producto',
         'Codigo Subyacente',
         'Unidad Medida en Kg,Un,Lt',
         'Cantidad (5 decimales - separador coma)',
         'Precio Unitario (5 decimales - separador coma)',
-        'Fecha Factura Año-Mes-Dia',
-        'Fecha Pago Año-Mes-Dia',
+        'Fecha Factura A??o-Mes-Dia',
+        'Fecha Pago A??o-Mes-Dia',
         'Nit Comprador (Existente)',
         'Nombre Comprador',
         'Nit Vendedor (Existente)',
         'Nombre Vendedor',
         'Principal V,C',
         'Municipio (Nombre Exacto de la Ciudad)',
-        'Iva (N°%)',
-        'Descripción',
+        'Iva (N??%)',
+        'Descripci??n',
         'Activa',
         'Factura Activa',
         'Bodega',
@@ -74,9 +75,13 @@ class JCRReggisExporter:
         Returns:
             Path to the generated CSV file
         """
-        # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        now = datetime.now()
+        timestamp = now.strftime("%Y%m%d_%H%M%S")
+        date_folder = now.strftime("%d-%m-%Y")
         filename = f"JCR_Reggis_Facturas_{timestamp}.csv"
+        output_dir = Path("data") / "JUAN CAMILO ROSAS" / date_folder / "archivos"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / filename
 
         # Prepare rows
         rows = []
@@ -91,22 +96,22 @@ class JCRReggisExporter:
                     original_qty = product.quantity
 
                 row = {
-                    'N° Factura': invoice.invoice_number,
+                    'N?? Factura': invoice.invoice_number,
                     'Nombre Producto': product.name,
                     'Codigo Subyacente': product.underlying_code,  # Always 'SPN-1'
                     'Unidad Medida en Kg,Un,Lt': product.unit_of_measure,
                     'Cantidad (5 decimales - separador coma)': self._format_decimal(product.quantity),
                     'Precio Unitario (5 decimales - separador coma)': self._format_decimal(product.unit_price),
-                    'Fecha Factura Año-Mes-Dia': invoice.get_issue_date_formatted(),
-                    'Fecha Pago Año-Mes-Dia': invoice.get_due_date_formatted(),
+                    'Fecha Factura A??o-Mes-Dia': invoice.get_issue_date_formatted(),
+                    'Fecha Pago A??o-Mes-Dia': invoice.get_due_date_formatted(),
                     'Nit Comprador (Existente)': invoice.buyer_nit,
                     'Nombre Comprador': invoice.buyer_name,
                     'Nit Vendedor (Existente)': invoice.seller_nit,  # Always '1003516945'
                     'Nombre Vendedor': invoice.seller_name,  # Always 'JUAN CAMILO ROSAS'
                     'Principal V,C': 'V',  # Always 'V'
                     'Municipio (Nombre Exacto de la Ciudad)': self.municipality if self.municipality else invoice.seller_municipality,
-                    'Iva (N°%)': f"{self.iva_percentage}%",
-                    'Descripción': '',  # Always empty
+                    'Iva (N??%)': f"{self.iva_percentage}%",
+                    'Descripci??n': '',  # Always empty
                     'Activa': '1',  # Always 1
                     'Factura Activa': '1',  # Always 1
                     'Bodega': '',
@@ -119,7 +124,7 @@ class JCRReggisExporter:
 
         # Write CSV with UTF-8 BOM for Excel compatibility
         # Using comma as delimiter as specified in Reggis format
-        with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+        with output_path.open('w', newline='', encoding='utf-8-sig') as csvfile:
             writer = csv.DictWriter(
                 csvfile,
                 fieldnames=self.REGGIS_COLUMNS,
@@ -130,7 +135,7 @@ class JCRReggisExporter:
             writer.writeheader()
             writer.writerows(rows)
 
-        return str(Path(filename).absolute())
+        return str(output_path.resolve())
 
     def _format_decimal(self, value) -> str:
         """

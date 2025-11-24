@@ -1,3 +1,4 @@
+
 """
 Juan Camilo Rosas Tab - Invoice processing interface for Juan Camilo Rosas
 Processes CSV/TXT files and converts to Reggis format with unit conversions
@@ -5,7 +6,7 @@ Processes CSV/TXT files and converts to Reggis format with unit conversions
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QListWidget, QFileDialog, QProgressBar, QMessageBox, QFrame,
-    QLineEdit, QGroupBox, QScrollArea
+    QLineEdit, QScrollArea, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -54,6 +55,7 @@ class JuanCamiloRosasTab(QWidget):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setStyleSheet("QScrollArea { border: none; }")
         main_layout.addWidget(scroll_area)
 
         content_widget = QWidget()
@@ -61,7 +63,7 @@ class JuanCamiloRosasTab(QWidget):
 
         layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        layout.setSpacing(18)
 
         # Company title
         title = QLabel("JUAN CAMILO ROSAS")
@@ -92,7 +94,7 @@ class JuanCamiloRosasTab(QWidget):
                 border: 2px solid #bdc3c7;
                 border-radius: 5px;
                 text-align: center;
-                height: 25px;
+                height: 26px;
             }
             QProgressBar::chunk {
                 background-color: #3498db;
@@ -114,7 +116,7 @@ class JuanCamiloRosasTab(QWidget):
                 background-color: #3498db;
                 color: white;
                 padding: 15px;
-                border-radius: 5px;
+                border-radius: 6px;
             }
             QPushButton:hover {
                 background-color: #2980b9;
@@ -132,20 +134,24 @@ class JuanCamiloRosasTab(QWidget):
     def _create_csv_section(self) -> QFrame:
         """Create CSV/TXT files selection section"""
         frame = QFrame()
-        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 15px; }")
+        frame.setStyleSheet("QFrame { background-color: white; border-radius: 8px; padding: 15px; }")
 
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(frame)
         layout.setSpacing(10)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         label = QLabel("Archivos CSV/TXT de Facturas:")
         label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(label)
 
         self.csv_list = QListWidget()
-        self.csv_list.setMaximumHeight(150)
+        self.csv_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
+        self.csv_list.setMinimumHeight(180)
         layout.addWidget(self.csv_list)
 
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
+        btn_layout.setContentsMargins(0, 0, 0, 0)
 
         add_btn = QPushButton("Agregar Archivos")
         add_btn.clicked.connect(self.add_csv_files)
@@ -163,27 +169,28 @@ class JuanCamiloRosasTab(QWidget):
         btn_layout.addWidget(clear_btn)
 
         layout.addLayout(btn_layout)
-        frame.setLayout(layout)
         return frame
 
     def _create_config_section(self) -> QFrame:
         """Create configuration section"""
         frame = QFrame()
-        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 15px; }")
+        frame.setStyleSheet("QFrame { background-color: white; border-radius: 8px; padding: 15px; }")
 
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(frame)
         layout.setSpacing(10)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        label = QLabel("Configuración de Exportación:")
+        label = QLabel("Configuraci?n de Exportaci?n:")
         label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(label)
 
         # Municipality
         muni_layout = QHBoxLayout()
+        muni_layout.setSpacing(10)
         muni_label = QLabel("Municipio:")
         muni_label.setMinimumWidth(100)
         self.municipality_input = QLineEdit()
-        self.municipality_input.setPlaceholderText("Ej: Cali, Bogotá, Medellín")
+        self.municipality_input.setPlaceholderText("Ej: Cali, Bogot?, Medell?n")
         self.municipality_input.setText("Cali")  # Default value
         muni_layout.addWidget(muni_label)
         muni_layout.addWidget(self.municipality_input)
@@ -191,6 +198,7 @@ class JuanCamiloRosasTab(QWidget):
 
         # IVA Percentage
         iva_layout = QHBoxLayout()
+        iva_layout.setSpacing(10)
         iva_label = QLabel("IVA (%):")
         iva_label.setMinimumWidth(100)
         self.iva_input = QLineEdit()
@@ -200,7 +208,6 @@ class JuanCamiloRosasTab(QWidget):
         iva_layout.addWidget(self.iva_input)
         layout.addLayout(iva_layout)
 
-        frame.setLayout(layout)
         return frame
 
     def _create_conversion_info(self) -> QFrame:
@@ -209,26 +216,27 @@ class JuanCamiloRosasTab(QWidget):
         frame.setStyleSheet("""
             QFrame {
                 background-color: #ecf0f1;
-                border-radius: 5px;
+                border-radius: 8px;
                 padding: 15px;
             }
         """)
 
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(frame)
         layout.setSpacing(8)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        label = QLabel("📊 Conversiones de Unidades Aplicadas:")
+        label = QLabel("Conversi?n de unidades aplicadas:")
         label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         label.setStyleSheet("color: #2c3e50;")
         layout.addWidget(label)
 
         conversions = [
-            "• MEGA: 5 UNIDADES DE 7 LIBRAS C/U = 17.5 KILOS",
-            "• REDONDA: 48 UNIDADES DE 1 LIBRA C/U = 24 KILOS",
-            "• LIBRAS: 10 UNIDADES DE 4 LIBRAS C/U = 20 KILOS",
-            "• KAO: 20 UNIDADES",
-            "• PASTUANIO: 16 KILOS",
-            "• PASTILLA LIBRA: 32 UNIDADES"
+            "- MEGA: 5 unidades de 7 libras c/u = 17.5 kilos",
+            "- REDONDA: 48 unidades de 1 libra c/u = 24 kilos",
+            "- LIBRAS: 10 unidades de 4 libras c/u = 20 kilos",
+            "- KAO: 20 unidades",
+            "- PASTUANIO: 16 kilos",
+            "- PASTILLA LIBRA: 32 unidades"
         ]
 
         info_text = QLabel("\n".join(conversions))
@@ -237,13 +245,12 @@ class JuanCamiloRosasTab(QWidget):
         info_text.setWordWrap(True)
         layout.addWidget(info_text)
 
-        note = QLabel("Nota: El precio unitario se calcula automáticamente dividiendo el valor total por la cantidad convertida.")
+        note = QLabel("Nota: El precio unitario se calcula autom?ticamente dividiendo el valor total por la cantidad convertida.")
         note.setFont(QFont("Arial", 8))
         note.setStyleSheet("color: #7f8c8d; font-style: italic; padding-left: 10px;")
         note.setWordWrap(True)
         layout.addWidget(note)
 
-        frame.setLayout(layout)
         return frame
 
     def add_csv_files(self):
@@ -303,7 +310,7 @@ class JuanCamiloRosasTab(QWidget):
             QMessageBox.warning(
                 self,
                 "Error",
-                "El IVA debe ser un número válido"
+                "El IVA debe ser un n?mero v?lido"
             )
             return
 
@@ -341,7 +348,7 @@ class JuanCamiloRosasTab(QWidget):
         )
 
         if success:
-            QMessageBox.information(self, "Éxito", message)
+            QMessageBox.information(self, "?xito", message)
         else:
             QMessageBox.critical(self, "Error", message)
 
@@ -352,7 +359,7 @@ class JuanCamiloRosasTab(QWidget):
                 background-color: {color};
                 color: white;
                 padding: 8px 15px;
-                border-radius: 5px;
+                border-radius: 6px;
                 font-weight: bold;
             }}
             QPushButton:hover {{

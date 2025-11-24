@@ -72,20 +72,20 @@ class ProcessInvoices:
                 continue
 
         if not all_invoices:
-            return False, "No se encontraron facturas válidas en los archivos", 0
+            return False, "No se encontraron facturas validas en los archivos", 0
 
         # Export invoices
         try:
             if output_format == 'csv':
                 output_file = self.file_exporter.export_to_csv(all_invoices, company)
-                message = f"Datos exportados exitosamente a:\n{output_file}"
+                message = f"Datos exportados exitosamente en:\n{output_file}"
             else:  # excel
                 self.file_exporter.export_to_excel(
                     all_invoices,
                     excel_file,
                     excel_sheet
                 )
-                message = f"Datos exportados exitosamente a:\n{excel_file}"
+                message = f"Datos exportados exitosamente en:\n{excel_file}"
         except Exception as e:
             return False, f"Error al exportar datos: {str(e)}", 0
 

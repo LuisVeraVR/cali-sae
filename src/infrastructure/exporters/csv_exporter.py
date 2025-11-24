@@ -1,3 +1,4 @@
+
 """
 CSV Exporter - Exports invoices and reports to CSV format
 """
@@ -24,9 +25,13 @@ class CSVExporter:
         Returns:
             Path to the generated CSV file
         """
-        # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        now = datetime.now()
+        timestamp = now.strftime("%Y%m%d_%H%M%S")
+        date_folder = now.strftime("%d-%m-%Y")
         filename = f"{company}_Facturas_{timestamp}.csv"
+        output_dir = Path("data") / company / date_folder / "archivos"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / filename
 
         # Define column order (specific for each company)
         column_order = self._get_column_order(company)
@@ -36,7 +41,7 @@ class CSVExporter:
         for invoice in invoices:
             for product in invoice.products:
                 row = {
-                    'N° Factura': invoice.invoice_number,
+                    'N?? Factura': invoice.invoice_number,
                     'Nombre Producto': product.name,
                     'Codigo Subyacente': product.underlying_code,
                     'Unidad Medida': product.unit_of_measure,
@@ -52,9 +57,9 @@ class CSVExporter:
                     'Principal V,C': 'V',
                     'Municipio': invoice.seller_municipality,
                     'Iva': f"{product.get_formatted_iva()}%",
-                    'Descripción': '',
-                    'Activa Factura': 'Sí',
-                    'Activa Bodega': 'Sí',
+                    'Descripci??n': '',
+                    'Activa Factura': 'S??',
+                    'Activa Bodega': 'S??',
                     'Incentivo': '',
                     'Cantidad Original': product.get_formatted_quantity(),
                     'Moneda': invoice.format_currency_code()
@@ -62,7 +67,7 @@ class CSVExporter:
                 rows.append(row)
 
         # Write CSV with UTF-8 BOM for Excel compatibility
-        with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+        with output_path.open('w', newline='', encoding='utf-8-sig') as csvfile:
             writer = csv.DictWriter(
                 csvfile,
                 fieldnames=column_order,
@@ -73,7 +78,7 @@ class CSVExporter:
             writer.writeheader()
             writer.writerows(rows)
 
-        return str(Path(filename).absolute())
+        return str(output_path.resolve())
 
     def export_reports(self, reports: List[Report], output_path: str) -> None:
         """
@@ -89,7 +94,7 @@ class CSVExporter:
             'Archivo',
             'Registros Procesados',
             'Fecha',
-            'Tamaño (MB)'
+            'Tama??o (MB)'
         ]
 
         rows = []
@@ -100,7 +105,7 @@ class CSVExporter:
                 'Archivo': report.filename,
                 'Registros Procesados': report.records_processed,
                 'Fecha': report.get_datetime(),
-                'Tamaño (MB)': f"{report.get_file_size_mb():.2f}"
+                'Tama??o (MB)': f"{report.get_file_size_mb():.2f}"
             }
             rows.append(row)
 
@@ -128,7 +133,7 @@ class CSVExporter:
         # For now, all companies use the same column order
         # This can be customized per company in the future
         return [
-            'N° Factura',
+            'N?? Factura',
             'Nombre Producto',
             'Codigo Subyacente',
             'Unidad Medida',
@@ -144,7 +149,7 @@ class CSVExporter:
             'Principal V,C',
             'Municipio',
             'Iva',
-            'Descripción',
+            'Descripci??n',
             'Activa Factura',
             'Activa Bodega',
             'Incentivo',

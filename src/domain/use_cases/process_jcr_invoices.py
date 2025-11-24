@@ -18,7 +18,7 @@ class ProcessJCRInvoices:
     def __init__(
         self,
         report_repository: ReportRepositoryInterface,
-        csv_parser,  # JCRCsvParser - injected from infrastructure (no se usa directamente aquí)
+        csv_parser,  # JCRCsvParser - injected from infrastructure (not used directly here)
         reggis_exporter  # JCRReggisExporter - injected from infrastructure
     ):
         self.report_repository = report_repository
@@ -69,8 +69,6 @@ class ProcessJCRInvoices:
                 for invoice in invoices:
                     for product in invoice.products:
                         key = (invoice.invoice_number, product.name)
-                        # Aquí usamos SIEMPRE la cantidad original del archivo,
-                        # no la convertida a kilos
                         original_quantities[key] = product.original_quantity
 
                     # Set municipality if not already set
@@ -85,7 +83,7 @@ class ProcessJCRInvoices:
                 return False, f"Error procesando archivo {Path(csv_file).name}: {str(e)}", 0
 
         if not all_invoices:
-            return False, "No se encontraron facturas válidas en los archivos", 0
+            return False, "No se encontraron facturas validas en los archivos", 0
 
         # Export invoices to Reggis format
         try:

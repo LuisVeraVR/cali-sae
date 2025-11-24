@@ -4,7 +4,7 @@ Agrobuitron Tab - Invoice processing interface for Agrobuitron company
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QListWidget, QRadioButton, QButtonGroup, QFileDialog,
-    QComboBox, QProgressBar, QMessageBox, QFrame
+    QComboBox, QProgressBar, QMessageBox, QFrame, QScrollArea, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -49,13 +49,31 @@ class AgrobuitronTab(QWidget):
         self.zip_files: List[str] = []
         self.excel_file: Optional[str] = None
         self.processing_thread: Optional[ProcessingThread] = None
+        self.card_style = (
+            "QFrame { background-color: white; border-radius: 8px; "
+            "padding: 15px; border: 1px solid #e0e0e0; }"
+        )
         self.init_ui()
 
     def init_ui(self):
         """Initialize the user interface"""
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setStyleSheet("QScrollArea { border: 0; }")
+        main_layout.addWidget(scroll_area)
+
+        content_widget = QWidget()
+        content_widget.setStyleSheet("background-color: #f5f7fa;")
+        scroll_area.setWidget(content_widget)
+
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        layout.setSpacing(12)
 
         # Company title
         title = QLabel("AGROBUITRON")
@@ -104,7 +122,7 @@ class AgrobuitronTab(QWidget):
                 background-color: #27ae60;
                 color: white;
                 padding: 15px;
-                border-radius: 5px;
+                border-radius: 6px;
             }
             QPushButton:hover {
                 background-color: #229954;
@@ -118,12 +136,12 @@ class AgrobuitronTab(QWidget):
         layout.addWidget(process_btn)
 
         layout.addStretch()
-        self.setLayout(layout)
+        self.setLayout(main_layout)
 
     def _create_zip_section(self) -> QFrame:
         """Create ZIP files selection section"""
         frame = QFrame()
-        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 15px; }")
+        frame.setStyleSheet(self.card_style)
 
         layout = QVBoxLayout()
         layout.setSpacing(10)
@@ -133,7 +151,8 @@ class AgrobuitronTab(QWidget):
         layout.addWidget(label)
 
         self.zip_list = QListWidget()
-        self.zip_list.setMaximumHeight(150)
+        self.zip_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.zip_list.setMinimumHeight(180)
         layout.addWidget(self.zip_list)
 
         btn_layout = QHBoxLayout()
@@ -160,7 +179,7 @@ class AgrobuitronTab(QWidget):
     def _create_output_section(self) -> QFrame:
         """Create output format selection section"""
         frame = QFrame()
-        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 15px; }")
+        frame.setStyleSheet(self.card_style)
 
         layout = QVBoxLayout()
         layout.setSpacing(10)
@@ -188,7 +207,7 @@ class AgrobuitronTab(QWidget):
     def _create_excel_section(self) -> QFrame:
         """Create Excel file selection section"""
         frame = QFrame()
-        frame.setStyleSheet("QFrame { background-color: white; border-radius: 5px; padding: 15px; }")
+        frame.setStyleSheet(self.card_style)
 
         layout = QVBoxLayout()
         layout.setSpacing(10)
@@ -331,7 +350,7 @@ class AgrobuitronTab(QWidget):
         self.status_label.setText(f"Proceso completado. Registros procesados: {records}" if success else "Error en el procesamiento")
 
         if success:
-            QMessageBox.information(self, "Éxito", message)
+            QMessageBox.information(self, "Exito", message)
         else:
             QMessageBox.critical(self, "Error", message)
 
