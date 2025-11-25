@@ -62,7 +62,7 @@ class ProcessJCRInvoices:
                 # Create parser instance for this file
                 from ...infrastructure.parsers.jcr_csv_parser import JCRCsvParser
 
-                parser = JCRCsvParser(csv_file)
+                parser = JCRCsvParser(csv_file, iva_percentage=iva_percentage)
                 invoices = parser.parse()
 
                 # Store original quantities before conversion
