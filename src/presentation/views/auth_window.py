@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """
 Authentication Window - Login and password change interface
@@ -31,7 +32,7 @@ class AuthWindow(QWidget):
 
     def init_ui(self):
         """Initialize the user interface"""
-        self.setWindowTitle("Cali SAE - Iniciar Sesi?n")
+        self.setWindowTitle("Cali SAE - Iniciar Sesión")
         self.setMinimumSize(520, 640)
         self.setStyleSheet("background-color: #f5f7fb;")
 
@@ -60,7 +61,7 @@ class AuthWindow(QWidget):
         title.setStyleSheet("color: #1f2d3d; letter-spacing: 1px;")
         main_layout.addWidget(title)
 
-        subtitle = QLabel("Sistema de Facturas Electr?nicas")
+        subtitle = QLabel("Sistema de Facturas Electrónicas")
         subtitle.setFont(QFont("Arial", 11))
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setStyleSheet("color: #7a8ca5;")
@@ -110,12 +111,12 @@ class AuthWindow(QWidget):
         layout.addWidget(self.username_input)
 
         # Password
-        password_label = QLabel("Contrase?a:")
+        password_label = QLabel("Contraseña:")
         password_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(password_label)
 
         self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("Ingrese su contrase?a")
+        self.password_input.setPlaceholderText("Ingrese su contraseña")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setStyleSheet(self._get_input_style())
         self.password_input.setFont(QFont("Arial", 10))
@@ -123,13 +124,13 @@ class AuthWindow(QWidget):
         layout.addWidget(self.password_input)
 
         # Show password checkbox
-        self.show_password_checkbox = QCheckBox("Mostrar contrase?a")
+        self.show_password_checkbox = QCheckBox("Mostrar contraseña")
         self.show_password_checkbox.setFont(QFont("Arial", 9))
         self.show_password_checkbox.stateChanged.connect(self.toggle_password_visibility)
         layout.addWidget(self.show_password_checkbox)
 
         # Login button
-        login_btn = QPushButton("Iniciar Sesi?n")
+        login_btn = QPushButton("Iniciar Sesión")
         login_btn.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         login_btn.setStyleSheet(self._get_button_style("#27ae60"))
         login_btn.clicked.connect(self.handle_login)
@@ -137,7 +138,7 @@ class AuthWindow(QWidget):
         layout.addWidget(login_btn)
 
         # Change password button
-        change_pwd_btn = QPushButton("Cambiar contrase?a")
+        change_pwd_btn = QPushButton("Cambiar contraseña")
         change_pwd_btn.setFont(QFont("Arial", 9))
         change_pwd_btn.setStyleSheet(self._get_button_style("#3498db", small=True))
         change_pwd_btn.clicked.connect(self.show_change_password)
@@ -164,7 +165,7 @@ class AuthWindow(QWidget):
         layout.setSpacing(14)
 
         # Title
-        title = QLabel("Cambiar contrase?a")
+        title = QLabel("Cambiar contraseña")
         title.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
@@ -180,7 +181,7 @@ class AuthWindow(QWidget):
         layout.addWidget(self.change_username_input)
 
         # Current password
-        current_pwd_label = QLabel("Contrase?a actual:")
+        current_pwd_label = QLabel("Contraseña actual:")
         current_pwd_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(current_pwd_label)
 
@@ -191,7 +192,7 @@ class AuthWindow(QWidget):
         layout.addWidget(self.current_password_input)
 
         # New password
-        new_pwd_label = QLabel("Nueva contrase?a:")
+        new_pwd_label = QLabel("Nueva contraseña:")
         new_pwd_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(new_pwd_label)
 
@@ -229,7 +230,7 @@ class AuthWindow(QWidget):
         password = self.password_input.text()
 
         if not username or not password:
-            QMessageBox.warning(self, "Error", "Por favor ingrese usuario y contrase?a")
+            QMessageBox.warning(self, "Error", "Por favor ingrese usuario y contraseña")
             return
 
         # Use controller to authenticate
@@ -271,7 +272,7 @@ class AuthWindow(QWidget):
         )
 
         if success:
-            QMessageBox.information(self, "?xito", message)
+            QMessageBox.information(self, "Éxito", message)
             self.hide_change_password()
         else:
             QMessageBox.critical(self, "Error", message)

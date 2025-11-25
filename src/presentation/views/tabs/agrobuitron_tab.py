@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Agrobuitron Tab - Invoice processing interface for Agrobuitron company
 """
@@ -350,7 +351,7 @@ class AgrobuitronTab(QWidget):
         self.status_label.setText(f"Proceso completado. Registros procesados: {records}" if success else "Error en el procesamiento")
 
         if success:
-            QMessageBox.information(self, "?xito", message)
+            QMessageBox.information(self, "Éxito", message)
         else:
             QMessageBox.critical(self, "Error", message)
 

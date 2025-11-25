@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """
 El Paisano Tab - Procesa carpeta con XML y exporta a Reggis
@@ -242,7 +243,7 @@ class ElPaisanoTab(QWidget):
         )
 
         if success:
-            QMessageBox.information(self, "?xito", message)
+            QMessageBox.information(self, "Éxito", message)
         else:
             QMessageBox.critical(self, "Error", message)
 
