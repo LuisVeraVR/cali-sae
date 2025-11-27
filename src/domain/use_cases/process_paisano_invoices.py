@@ -186,18 +186,20 @@ class ProcessPaisanoInvoices:
                     original_qty = product.quantity
                     product.original_quantity = original_qty
 
-                    normalized_tokens = self._normalize_tokens(product.name)
-                    factor = self._match_factor(normalized_tokens)
+                    # Calculate conversion factor based on product name
+                    factor = self._calculate_conversion_factor(product.name)
                     if factor == Decimal("1"):
                         missing_products += 1
 
                     # Force underlying code
                     product.underlying_code = "SPN-1"
 
+                    # Convert quantity to kg using the calculated factor
                     converted_qty = original_qty * factor
                     product.quantity = converted_qty
                     product.unit_of_measure = "Kg" if factor != Decimal("1") else "Un"
 
+                    # Recalculate unit price based on converted quantity
                     if converted_qty > 0:
                         product.unit_price = product.total_price / converted_qty
 
@@ -242,6 +244,48 @@ class ProcessPaisanoInvoices:
         return True, message, total_records
 
     # --- Helpers ---
+    def _extract_grams_from_name(self, product_name: str) -> int:
+        """
+        Extract grams from product name
+        Examples: 'HARINA*500G' -> 500, 'FRIJOL*250G' -> 250, 'PANELA*500GR' -> 500
+        Returns 0 if no grams found
+        """
+        import re
+        if not product_name:
+            return 0
+
+        name_upper = product_name.upper()
+
+        # Look for KG/KILO/KILOS patterns first (1KG, 2KG, 24KILOS, etc.)
+        match_kg = re.search(r'(\d+)\s*(?:KG|KILO|KILOS)\b', name_upper)
+        if match_kg:
+            return int(match_kg.group(1)) * 1000
+
+        # Look for G/GR/GRAMOS patterns (500G, 250GR, etc.)
+        match = re.search(r'(\d+)\s*(?:G|GR|GRAMOS)\b', name_upper)
+        if match:
+            return int(match.group(1))
+
+        return 0
+
+    def _extract_volume_cc_from_name(self, product_name: str) -> int:
+        """
+        Extract volume in CC from product name
+        Examples: 'ACEITE*500CC' -> 500, 'ACEITE*3000CC' -> 3000
+        Returns 0 if no volume found
+        """
+        import re
+        if not product_name:
+            return 0
+
+        name_upper = product_name.upper()
+        # Look for patterns like 500CC, 1000CC, etc.
+        match = re.search(r'(\d+)\s*CC\b', name_upper)
+        if match:
+            return int(match.group(1))
+
+        return 0
+
     def _reload_catalog(self):
         """Load hardcoded + DB conversions and precompute tokens"""
         self._normalized_catalog = []
@@ -270,6 +314,49 @@ class ProcessPaisanoInvoices:
         # Remove common stopwords
         stop = {"DE", "LA", "EL", "LOS", "LAS", "A", "AL", "DEL"}
         return [t for t in tokens if t and t not in stop]
+
+    def _calculate_conversion_factor(self, product_name: str) -> Decimal:
+        """
+        Calculate conversion factor based on product name.
+
+        Priority:
+        1. If product has grams (500G, 250G, etc.): use grams/1000 as factor
+        2. If product has volume in CC (500CC, 1000CC): use CC/1000 * density
+        3. If product is "A GRANEL" or "AGRANEL": use catalog factor (usually 50 for sacks)
+        4. Otherwise: return 1 (no conversion)
+
+        Returns:
+            Decimal: conversion factor to convert units to kg
+        """
+        if not product_name:
+            return Decimal("1")
+
+        name_upper = product_name.upper()
+
+        # Check for "A GRANEL" or "AGRANEL" products (use catalog factor)
+        if "AGRANEL" in name_upper or "A GRANEL" in name_upper:
+            normalized_tokens = self._normalize_tokens(product_name)
+            factor = self._match_factor(normalized_tokens)
+            # For granel products, the factor represents kg per sack
+            return factor if factor != Decimal("1") else Decimal("50")
+
+        # Extract grams from name (e.g., "HARINA*500G" -> 500)
+        grams = self._extract_grams_from_name(product_name)
+        if grams > 0:
+            # Convert grams to kg: 500G -> 0.5 kg per unit
+            return Decimal(str(grams)) / Decimal("1000")
+
+        # Extract volume in CC for liquids (e.g., "ACEITE*500CC" -> 500)
+        volume_cc = self._extract_volume_cc_from_name(product_name)
+        if volume_cc > 0:
+            # For oil: density ≈ 0.92 g/ml, so 500CC ≈ 460g ≈ 0.46 kg
+            # For simplicity, we use 0.92 as default density for oils
+            density = Decimal("0.92")
+            kg_per_unit = (Decimal(str(volume_cc)) / Decimal("1000")) * density
+            return kg_per_unit
+
+        # No conversion info found, return 1 (keep as units)
+        return Decimal("1")
 
     def _match_factor(self, tokens: List[str]) -> Decimal:
         """Find best factor by token overlap; fallback 1"""
