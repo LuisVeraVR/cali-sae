@@ -24,30 +24,32 @@ def test_conversions():
         conversion_repository=None
     )
 
-    # Test cases: (product_name, original_quantity, expected_kg)
+    # Test cases: (product_name, original_quantity, expected_kg, note)
     test_cases = [
-        # Products with grams
-        ("HARINA AREPA*500G BLANCA", Decimal("10"), Decimal("5.0")),  # 10 units × 0.5 kg = 5 kg
-        ("FRIJOL CALIMA*250G", Decimal("12"), Decimal("3.0")),  # 12 units × 0.25 kg = 3 kg
-        ("AZUCAR BLANCA*500G", Decimal("24"), Decimal("12.0")),  # 24 units × 0.5 kg = 12 kg
-        ("PANELA*500GR", Decimal("48"), Decimal("24.0")),  # 48 units × 0.5 kg = 24 kg
+        # Products in CATALOG (should use catalog factors)
+        ("HARINA AREPA*500G BLANCA", Decimal("10"), Decimal("10"), "Catálogo: factor 24"),
+        ("FRIJOL CALIMA*250G", Decimal("12"), Decimal("12"), "Catálogo: factor 25"),
+        ("AZUCAR BLANCA*500G", Decimal("24"), Decimal("24"), "Catálogo: factor 25"),
+        ("PANELA*500GR", Decimal("48"), Decimal("48"), "Catálogo: factor 48"),
+        ("ACEITE SOYA*500CC LA ORLANDESA E", Decimal("24"), Decimal("24"), "Catálogo: factor 24"),
+        ("ACEITE SOYA*1000CC LA ORLANDESA E", Decimal("12"), Decimal("12"), "Catálogo: factor 12"),
+        ("ACEITE SOYA*3000CC LA ORLANDESA", Decimal("6"), Decimal("6"), "Catálogo: factor 51"),
 
-        # Products with volume (CC)
-        ("ACEITE SOYA*500CC LA ORLANDESA E", Decimal("24"), Decimal("11.04")),  # 24 × 0.46 kg ≈ 11.04 kg
-        ("ACEITE SOYA*1000CC LA ORLANDESA E", Decimal("12"), Decimal("11.04")),  # 12 × 0.92 kg ≈ 11.04 kg
-        ("ACEITE*3000CC", Decimal("6"), Decimal("16.56")),  # 6 × 2.76 kg ≈ 16.56 kg
+        # Products a granel in CATALOG
+        ("ARROZ AGRANEL", Decimal("2"), Decimal("2"), "Catálogo: factor 50 (kg por saco)"),
+        ("FRIJOL CALIMA AGRANEL", Decimal("3"), Decimal("3"), "Catálogo: factor 50"),
+        ("LENTEJA A GRANEL", Decimal("1"), Decimal("1"), "Catálogo: factor 50"),
 
-        # Products a granel (sacks)
-        ("ARROZ AGRANEL", Decimal("2"), Decimal("100.0")),  # 2 sacks × 50 kg = 100 kg
-        ("FRIJOL CALIMA AGRANEL", Decimal("3"), Decimal("150.0")),  # 3 sacks × 50 kg = 150 kg
-        ("LENTEJA A GRANEL", Decimal("1"), Decimal("50.0")),  # 1 sack × 50 kg = 50 kg
+        # Products in CATALOG with KG
+        ("AZUCAR BLANCA*50KG", Decimal("2"), Decimal("2"), "Catálogo: factor 50"),
+        ("PANELA REDONDA*24KILOS", Decimal("1"), Decimal("1"), "Catálogo: factor 24"),
 
-        # Products with KG in name
-        ("AZUCAR BLANCA*50KG", Decimal("2"), Decimal("100.0")),  # 2 × 50 kg = 100 kg
-        ("PANELA REDONDA*24KILOS", Decimal("1"), Decimal("24.0")),  # 1 × 24 kg = 24 kg
+        # Products NOT in catalog (should use automatic extraction)
+        ("PRODUCTO NUEVO*500G", Decimal("10"), Decimal("5.0"), "Auto: 10 × 0.5 kg = 5 kg"),
+        ("ACEITE NUEVO*500CC", Decimal("24"), Decimal("11.04"), "Auto: 24 × 0.46 kg = 11.04 kg"),
 
         # Products without conversion info (should stay as units)
-        ("GALLETAS CRAKENAS CLUB IND 8*10", Decimal("10"), Decimal("10.0")),  # 10 units (no conversion)
+        ("GALLETAS CRAKENAS CLUB IND 8*10", Decimal("10"), Decimal("10.0"), "Sin conversión"),
     ]
 
     print("=" * 80)
@@ -56,7 +58,7 @@ def test_conversions():
     print()
 
     all_passed = True
-    for product_name, original_qty, expected_kg in test_cases:
+    for product_name, original_qty, expected_kg, note in test_cases:
         # Calculate conversion factor
         factor = processor._calculate_conversion_factor(product_name)
         converted_kg = original_qty * factor
@@ -70,12 +72,13 @@ def test_conversions():
 
         print(f"{status}")
         print(f"  Producto: {product_name}")
+        print(f"  Nota: {note}")
         print(f"  Cantidad Original: {original_qty} unidades")
         print(f"  Factor: {factor}")
-        print(f"  Convertido: {converted_kg} kg")
-        print(f"  Esperado: {expected_kg} kg")
+        print(f"  Convertido: {converted_kg}")
+        print(f"  Esperado: {expected_kg}")
         if not is_correct:
-            print(f"  DIFERENCIA: {converted_kg - expected_kg} kg")
+            print(f"  DIFERENCIA: {converted_kg - expected_kg}")
         print()
 
     print("=" * 80)

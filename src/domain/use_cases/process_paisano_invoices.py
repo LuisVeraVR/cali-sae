@@ -320,9 +320,9 @@ class ProcessPaisanoInvoices:
         Calculate conversion factor based on product name.
 
         Priority:
-        1. If product has grams (500G, 250G, etc.): use grams/1000 as factor
-        2. If product has volume in CC (500CC, 1000CC): use CC/1000 * density
-        3. If product is "A GRANEL" or "AGRANEL": use catalog factor (usually 50 for sacks)
+        1. FIRST: Check catalog for exact product match
+        2. If not in catalog: Extract grams from name (500G, 250G, etc.)
+        3. If not in catalog: Extract volume in CC (500CC, 1000CC, etc.)
         4. Otherwise: return 1 (no conversion)
 
         Returns:
@@ -331,22 +331,21 @@ class ProcessPaisanoInvoices:
         if not product_name:
             return Decimal("1")
 
-        name_upper = product_name.upper()
+        # PRIORITY 1: Check catalog first
+        normalized_tokens = self._normalize_tokens(product_name)
+        catalog_factor = self._match_factor(normalized_tokens)
 
-        # Check for "A GRANEL" or "AGRANEL" products (use catalog factor)
-        if "AGRANEL" in name_upper or "A GRANEL" in name_upper:
-            normalized_tokens = self._normalize_tokens(product_name)
-            factor = self._match_factor(normalized_tokens)
-            # For granel products, the factor represents kg per sack
-            return factor if factor != Decimal("1") else Decimal("50")
+        # If found in catalog, use that factor
+        if catalog_factor != Decimal("1"):
+            return catalog_factor
 
-        # Extract grams from name (e.g., "HARINA*500G" -> 500)
+        # PRIORITY 2: Not in catalog, try to extract grams from name
         grams = self._extract_grams_from_name(product_name)
         if grams > 0:
             # Convert grams to kg: 500G -> 0.5 kg per unit
             return Decimal(str(grams)) / Decimal("1000")
 
-        # Extract volume in CC for liquids (e.g., "ACEITE*500CC" -> 500)
+        # PRIORITY 3: Try to extract volume in CC for liquids
         volume_cc = self._extract_volume_cc_from_name(product_name)
         if volume_cc > 0:
             # For oil: density ≈ 0.92 g/ml, so 500CC ≈ 460g ≈ 0.46 kg
