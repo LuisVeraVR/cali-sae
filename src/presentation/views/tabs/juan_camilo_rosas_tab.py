@@ -11,6 +11,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
 from typing import List, Optional
+import subprocess
+import platform
+from pathlib import Path
 
 
 class JCRProcessingThread(QThread):
@@ -349,9 +352,61 @@ class JuanCamiloRosasTab(QWidget):
         )
 
         if success:
-            QMessageBox.information(self, "Éxito", message)
+            self._show_success_dialog(message)
         else:
             QMessageBox.critical(self, "Error", message)
+
+    def _show_success_dialog(self, message: str):
+        """Show success dialog with option to open folder"""
+        # Extract file path from message
+        file_path = self._extract_file_path_from_message(message)
+
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.setWindowTitle("Éxito")
+        msg_box.setText(message)
+
+        # Add custom buttons
+        msg_box.addButton("OK", QMessageBox.ButtonRole.AcceptRole)
+
+        if file_path:
+            open_folder_btn = msg_box.addButton("Abrir carpeta", QMessageBox.ButtonRole.ActionRole)
+            msg_box.exec()
+
+            # Check which button was clicked
+            if msg_box.clickedButton() == open_folder_btn:
+                self._open_file_location(file_path)
+        else:
+            msg_box.exec()
+
+    def _extract_file_path_from_message(self, message: str) -> Optional[str]:
+        """Extract file path from success message"""
+        # Messages typically contain the path after a colon or newline
+        lines = message.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line and (line.startswith('/') or line.startswith('data/')):
+                # Check if it's a valid file path
+                path = Path(line)
+                if path.exists():
+                    return str(path.absolute())
+        return None
+
+    def _open_file_location(self, file_path: str):
+        """Open the folder containing the file in the system file explorer"""
+        try:
+            path = Path(file_path)
+            folder_path = path.parent if path.is_file() else path
+
+            system = platform.system()
+            if system == "Windows":
+                subprocess.run(['explorer', '/select,', str(path.absolute())])
+            elif system == "Darwin":  # macOS
+                subprocess.run(['open', '-R', str(path.absolute())])
+            else:  # Linux and others
+                subprocess.run(['xdg-open', str(folder_path.absolute())])
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"No se pudo abrir la carpeta: {str(e)}")
 
     def _get_button_style(self, color: str) -> str:
         """Get button stylesheet"""
