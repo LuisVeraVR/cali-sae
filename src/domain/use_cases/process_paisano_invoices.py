@@ -15,7 +15,9 @@ from ..repositories.report_repository import ReportRepositoryInterface
 class ProcessPaisanoInvoices:
     """Use case for processing El Paisano invoices from XML folders"""
 
-    # Conversion map: normalized product name -> factor to kilos
+    # Conversion map: normalized product name -> Presentacion (units per box/bulk)
+    # These values represent how many units come in a box/bulk
+    # Formula used: kilos_totales = (Presentacion × gramos / 1000) × Cantidad
     CONVERSION_MAP = {
         "ACEITE SOYA*500CC LA ORLANDESA E": Decimal("24"),
         "ARVEJA VERDE*500G": Decimal("25"),
@@ -319,42 +321,46 @@ class ProcessPaisanoInvoices:
         """
         Calculate conversion factor based on product name.
 
+        Formula: factor = (Presentacion × gramos / 1000)
+
+        Where:
+        - Presentacion: units per box/bulk (from catalog or default)
+        - gramos: extracted from product name (500G, 250G, etc.)
+
         Priority:
-        1. FIRST: Check catalog for exact product match
-        2. If not in catalog: Extract grams from name (500G, 250G, etc.)
-        3. If not in catalog: Extract volume in CC (500CC, 1000CC, etc.)
-        4. Otherwise: return 1 (no conversion)
+        1. FIRST: Check catalog for Presentacion (units per bulk)
+        2. If not in catalog: Use default Presentacion = 1
+        3. Extract grams from name (500G, 250G, KG, CC)
+        4. Calculate: (Presentacion × gramos / 1000) = kg per unit invoiced
 
         Returns:
-            Decimal: conversion factor to convert units to kg
+            Decimal: conversion factor in kg per unit (to multiply by invoice quantity)
         """
         if not product_name:
             return Decimal("1")
 
-        # PRIORITY 1: Check catalog first
+        # Step 1: Get Presentacion from catalog (units per bulk)
         normalized_tokens = self._normalize_tokens(product_name)
-        catalog_factor = self._match_factor(normalized_tokens)
+        presentacion = self._match_factor(normalized_tokens)  # Returns catalog value or 1
 
-        # If found in catalog, use that factor
-        if catalog_factor != Decimal("1"):
-            return catalog_factor
-
-        # PRIORITY 2: Not in catalog, try to extract grams from name
+        # Step 2: Extract grams from product name
         grams = self._extract_grams_from_name(product_name)
+
+        # If no grams found, try volume in CC for liquids
+        if grams == 0:
+            volume_cc = self._extract_volume_cc_from_name(product_name)
+            if volume_cc > 0:
+                # For liquids: assume density ≈ 0.92 g/ml
+                # So 500CC ≈ 460g
+                grams = int(volume_cc * 0.92)
+
+        # Step 3: Calculate conversion factor
+        # Formula: (Presentacion × gramos / 1000) = kg per invoiced unit
         if grams > 0:
-            # Convert grams to kg: 500G -> 0.5 kg per unit
-            return Decimal(str(grams)) / Decimal("1000")
+            factor = (presentacion * Decimal(str(grams))) / Decimal("1000")
+            return factor
 
-        # PRIORITY 3: Try to extract volume in CC for liquids
-        volume_cc = self._extract_volume_cc_from_name(product_name)
-        if volume_cc > 0:
-            # For oil: density ≈ 0.92 g/ml, so 500CC ≈ 460g ≈ 0.46 kg
-            # For simplicity, we use 0.92 as default density for oils
-            density = Decimal("0.92")
-            kg_per_unit = (Decimal(str(volume_cc)) / Decimal("1000")) * density
-            return kg_per_unit
-
-        # No conversion info found, return 1 (keep as units)
+        # No grams found, cannot convert
         return Decimal("1")
 
     def _match_factor(self, tokens: List[str]) -> Decimal:

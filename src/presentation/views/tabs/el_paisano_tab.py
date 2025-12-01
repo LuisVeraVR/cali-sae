@@ -250,27 +250,21 @@ class ElPaisanoTab(QWidget):
             QMessageBox.critical(self, "Error", message)
 
     def _show_success_dialog(self, message: str):
-        """Show success dialog with option to open folder"""
+        """Show success dialog and automatically open folder"""
         # Extract file path from message
         file_path = self._extract_file_path_from_message(message)
 
+        # Automatically open folder if file path exists
+        if file_path:
+            self._open_file_location(file_path)
+
+        # Show success message
         msg_box = QMessageBox(self)
         msg_box.setIcon(QMessageBox.Icon.Information)
         msg_box.setWindowTitle("Éxito")
         msg_box.setText(message)
-
-        # Add custom buttons
         msg_box.addButton("OK", QMessageBox.ButtonRole.AcceptRole)
-
-        if file_path:
-            open_folder_btn = msg_box.addButton("Abrir carpeta", QMessageBox.ButtonRole.ActionRole)
-            msg_box.exec()
-
-            # Check which button was clicked
-            if msg_box.clickedButton() == open_folder_btn:
-                self._open_file_location(file_path)
-        else:
-            msg_box.exec()
+        msg_box.exec()
 
     def _extract_file_path_from_message(self, message: str) -> Optional[str]:
         """Extract file path from success message"""
