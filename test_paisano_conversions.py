@@ -26,30 +26,31 @@ def test_conversions():
 
     # Test cases: (product_name, original_quantity, expected_kg, note)
     test_cases = [
-        # Products in CATALOG (should use catalog factors)
-        ("HARINA AREPA*500G BLANCA", Decimal("10"), Decimal("10"), "Catálogo: factor 24"),
-        ("FRIJOL CALIMA*250G", Decimal("12"), Decimal("12"), "Catálogo: factor 25"),
-        ("AZUCAR BLANCA*500G", Decimal("24"), Decimal("24"), "Catálogo: factor 25"),
-        ("PANELA*500GR", Decimal("48"), Decimal("48"), "Catálogo: factor 48"),
-        ("ACEITE SOYA*500CC LA ORLANDESA E", Decimal("24"), Decimal("24"), "Catálogo: factor 24"),
-        ("ACEITE SOYA*1000CC LA ORLANDESA E", Decimal("12"), Decimal("12"), "Catálogo: factor 12"),
-        ("ACEITE SOYA*3000CC LA ORLANDESA", Decimal("6"), Decimal("6"), "Catálogo: factor 51"),
+        # Products with GRAMS (should use automatic extraction: kg = units × grams/1000)
+        ("HARINA AREPA*500G BLANCA", Decimal("10"), Decimal("5.0"), "Auto: 10 × 0.5 kg = 5 kg"),
+        ("FRIJOL CALIMA*500G", Decimal("55"), Decimal("27.5"), "Auto: 55 × 0.5 kg = 27.5 kg"),
+        ("FRIJOL CALIMA*250G", Decimal("12"), Decimal("3.0"), "Auto: 12 × 0.25 kg = 3 kg"),
+        ("AZUCAR BLANCA*500G", Decimal("24"), Decimal("12.0"), "Auto: 24 × 0.5 kg = 12 kg"),
+        ("PANELA*500GR", Decimal("48"), Decimal("24.0"), "Auto: 48 × 0.5 kg = 24 kg"),
+        ("AZUCAR BLANCA*50KG", Decimal("2"), Decimal("100.0"), "Auto: 2 × 50 kg = 100 kg"),
+        ("PANELA REDONDA*24KILOS", Decimal("1"), Decimal("24.0"), "Auto: 1 × 24 kg = 24 kg"),
 
-        # Products a granel in CATALOG
-        ("ARROZ AGRANEL", Decimal("2"), Decimal("2"), "Catálogo: factor 50 (kg por saco)"),
-        ("FRIJOL CALIMA AGRANEL", Decimal("3"), Decimal("3"), "Catálogo: factor 50"),
-        ("LENTEJA A GRANEL", Decimal("1"), Decimal("1"), "Catálogo: factor 50"),
+        # Products with VOLUME in CC (should use automatic extraction with density)
+        ("ACEITE SOYA*500CC LA ORLANDESA E", Decimal("24"), Decimal("11.04"), "Auto: 24 × 0.46 kg = 11.04 kg"),
+        ("ACEITE SOYA*1000CC LA ORLANDESA E", Decimal("12"), Decimal("11.04"), "Auto: 12 × 0.92 kg = 11.04 kg"),
+        ("ACEITE SOYA*3000CC LA ORLANDESA", Decimal("6"), Decimal("16.56"), "Auto: 6 × 2.76 kg = 16.56 kg"),
 
-        # Products in CATALOG with KG
-        ("AZUCAR BLANCA*50KG", Decimal("2"), Decimal("2"), "Catálogo: factor 50"),
-        ("PANELA REDONDA*24KILOS", Decimal("1"), Decimal("1"), "Catálogo: factor 24"),
+        # Products A GRANEL (should use catalog factor 50 kg per sack)
+        ("ARROZ AGRANEL", Decimal("2"), Decimal("100.0"), "Catálogo: 2 × 50 kg/saco = 100 kg"),
+        ("FRIJOL CALIMA AGRANEL", Decimal("3"), Decimal("150.0"), "Catálogo: 3 × 50 kg/saco = 150 kg"),
+        ("LENTEJA A GRANEL", Decimal("1"), Decimal("50.0"), "Catálogo: 1 × 50 kg/saco = 50 kg"),
 
         # Products NOT in catalog (should use automatic extraction)
         ("PRODUCTO NUEVO*500G", Decimal("10"), Decimal("5.0"), "Auto: 10 × 0.5 kg = 5 kg"),
         ("ACEITE NUEVO*500CC", Decimal("24"), Decimal("11.04"), "Auto: 24 × 0.46 kg = 11.04 kg"),
 
         # Products without conversion info (should stay as units)
-        ("GALLETAS CRAKENAS CLUB IND 8*10", Decimal("10"), Decimal("10.0"), "Sin conversión"),
+        ("GALLETAS CRAKENAS CLUB IND 8*10", Decimal("10"), Decimal("10.0"), "Catálogo: 10 × 1 = 10 unidades"),
     ]
 
     print("=" * 80)

@@ -16,103 +16,25 @@ class ProcessPaisanoInvoices:
     """Use case for processing El Paisano invoices from XML folders"""
 
     # Conversion map: normalized product name -> factor to kilos
+    # SOLO incluir productos A GRANEL (factor = kg por saco)
+    # Productos con gramos/volumen usan extracción automática
     CONVERSION_MAP = {
-        "ACEITE SOYA*500CC LA ORLANDESA E": Decimal("24"),
-        "ARVEJA VERDE*500G": Decimal("25"),
-        "ARVEJA VERDE*250G": Decimal("25"),
-        "ARROZ*500G": Decimal("25"),
-        "AVENA HOJUELA*250G": Decimal("24"),
-        "ATUN ROBIN/H LOMO/AGUA*175G": Decimal("48"),
-        "ATUN SABOR/P*175G LOMO/ACEITE": Decimal("48"),
-        "ATUN SABOR/P*175G LOMO/AGUA": Decimal("48"),
-        "AVENA HOJUELA*200G": Decimal("48"),
-        "AVENA HOJUELA*500G": Decimal("24"),
-        "BLANQUILLO*250G FRIJOL": Decimal("25"),
-        "FRIJOL CALIMA*500G": Decimal("25"),
-        "FRIJOL CALIMA*250G": Decimal("25"),
-        "FRIJOL PALICERO*500G": Decimal("25"),
-        "GARBANZO*500G": Decimal("25"),
-        "BLANQUILLO*500G FRIJOL": Decimal("25"),
-        "FRIJOL CARG/TO*500G": Decimal("25"),
-        "FRIJOL BOLON*500G": Decimal("25"),
-        "HARINA AREPA*500G BLANCA": Decimal("24"),
-        "HARINA AREPA*500G AMARILLA": Decimal("24"),
-        "HARINA TRIGO UND*500G LA VECINA": Decimal("25"),
-        "ACEITE SOYA*250CC LA ORLANDESA": Decimal("24"),
-        "ACEITE SOYA*500CC SU ACEITE": Decimal("24"),
-        "ACEITE SOYA*900CC LA ORLANDESA E": Decimal("12"),
-        "ACEITE SOYA*1000CC LA ORLANDESA E": Decimal("12"),
-        "HARINA DE TRIGO FARALLONES*500GR": Decimal("25"),
-        "PANELA*500GR": Decimal("48"),
-        "PANELA REDONDA/2UND*500GR 1000GR": Decimal("24"),
-        "LENTEJA*500G": Decimal("25"),
-        "LENTEJA*250G": Decimal("25"),
-        "MAIZ PIRA*500G": Decimal("25"),
-        "MAZAMORRA*500G BLANCA": Decimal("25"),
-        "PASTA SANTALI*250G MACARRONCITO": Decimal("24"),
+        # Productos A GRANEL (sacos de 50 kg)
         "ARROZ AGRANEL": Decimal("50"),
-        "FRIJOL CARAOTA AGRANEL": Decimal("50"),
-        "PASTA SANTALI*250G C/ANGEL": Decimal("24"),
-        "PASTA COMARRICO*500 C/ANGEL": Decimal("12"),
-        "PASTA COMARRICO*500G SPAGUETTI": Decimal("12"),
-        "PASTA ZONIA*250G CONCHITA": Decimal("24"),
-        "PASTA ZONIA*250G MACARRON": Decimal("24"),
-        "PASTA SANTALI*250G CONCHITA": Decimal("24"),
-        "PASTA ZONIA*200G ESPAGUETTI": Decimal("24"),
-        "PASTA ZONIA*250G C/ANGEL": Decimal("24"),
-        "PASTA SANTALI*250G SPAGUETTI": Decimal("24"),
-        "PASTA ZONIA*250G CORBATA": Decimal("24"),
-        "PASTA ZONIA*250G SPAGUETTI": Decimal("24"),
         "ARVEJA VERDE AGRANEL": Decimal("50"),
-        "FRIJOL CALIMA AGRANEL": Decimal("50"),
-        "LENTEJA A GRANEL": Decimal("50"),
-        "FRIJOL CARG/TO AGRANEL": Decimal("50"),
-        "CUCHUCO*450G GRUESO VALLE": Decimal("25"),
-        "PASTA ZONIA*200G C/ANGEL": Decimal("24"),
-        "PANELA REDONDA*24KILOS": Decimal("24"),
-        "PANELA REDONDA*500GR": Decimal("48"),
-        "FRIJOL CARAOTA*500G": Decimal("25"),
-        "AZUCAR BLANCA*500G": Decimal("25"),
-        "AZUCAR BLANCA*50KG": Decimal("50"),
-        "ACEITE SOYA*3000CC LA ORLANDESA": Decimal("51"),
-        "LECHE EN POLVO*380GR ENTERA NUTRALAC": Decimal("30"),
-        "ARROZ BONGUERO*500G": Decimal("25"),
-        "ARROZ SONORA*500GR": Decimal("25"),
-        "PANELA TEJO/8UND*125GR": Decimal("8"),
-        "HARINA TRIGO*500G LA MONJITA": Decimal("24"),
-        "LECHE EN POLVO*900GR ENTERA NUTRALAC": Decimal("13"),
-        "BLANQUILLO AGRANEL FRIJOL": Decimal("50"),
-        "GARBANZO AGRANEL": Decimal("50"),
-        "ACEITE SOYA*5000CC LA ORLANDESA E": Decimal("4"),
-        "ARROZ SONORA*250GR": Decimal("50"),
-        "GALLETAS CRAKENAS CLUB IND 8*10": Decimal("1"),
-        "LECHE EN POLVO*380GR ENTERA DONA VACA": Decimal("30"),
-        "LECHE EN POLVO*900GR ENTERA DONA VACA": Decimal("13"),
-        "ATUN D/SANCHO*175G LOMO/AGUA": Decimal("48"),
-        "ACEITE SAN MIGUEL DE SOYA*500CC": Decimal("24"),
-        "ACEITE SAN MIGUEL DE SOYA*3000CC": Decimal("51"),
-        "ACEITE SAN MIGUEL DE SOYA*5000CC": Decimal("4"),
-        "ACEITE SAN MIGUEL DE SOYA*1000CC": Decimal("12"),
-        "PANELA*500GR CUADRADA": Decimal("48"),
-        "AZUCAR*500GR CARMELITA": Decimal("25"),
-        "FRIJOL CALIMA A GRANEL": Decimal("50"),
-        "ARROZ SONORA*500G": Decimal("25"),
-        "AZUCAR*500G CARMELITA": Decimal("25"),
-        "AZUCAR CARMELITA*500GR**": Decimal("25"),
-        "PASTA C/ANGEL*250G ZONIA**": Decimal("24"),
-        "PASTA SPAGUETTI*250G ZONIA**": Decimal("24"),
-        "HARINA DE TRIGO*500G LA MONJITA**": Decimal("24"),
-        "LECHE EN POLVO*900G ENTERA DONA VACA": Decimal("13"),
-        "PASTA CONCHA*250G ZONIA**": Decimal("24"),
-        "HARINA DE TRIGO*500G LA VECINA**": Decimal("25"),
-        "BLANQUILLO A GRANEL FRIJOL": Decimal("50"),
-        "HARINA DE TRIGO*500G LA VECINA": Decimal("25"),
-        "FRIJOL CARG/TO*250G": Decimal("25"),
         "ARVEJA VERDE A GRANEL": Decimal("50"),
-        "ACEITE SAN MIGUEL DE SOYA*250CC": Decimal("48"),
-        "HOJUELAS DE MAIZ*220G SUNSHINE": Decimal("12"),
+        "BLANQUILLO AGRANEL FRIJOL": Decimal("50"),
+        "BLANQUILLO A GRANEL FRIJOL": Decimal("50"),
+        "FRIJOL CALIMA AGRANEL": Decimal("50"),
+        "FRIJOL CALIMA A GRANEL": Decimal("50"),
+        "FRIJOL CARAOTA AGRANEL": Decimal("50"),
+        "FRIJOL CARG/TO AGRANEL": Decimal("50"),
         "FRIJOL CARG/TO A GRANEL": Decimal("50"),
-        "PASTA ZONIA*250G ESPAGUETI": Decimal("24"),
+        "GARBANZO AGRANEL": Decimal("50"),
+        "LENTEJA A GRANEL": Decimal("50"),
+
+        # Productos especiales sin gramos/volumen (mantener como unidades)
+        "GALLETAS CRAKENAS CLUB IND 8*10": Decimal("1"),
     }
 
     def __init__(
@@ -368,9 +290,11 @@ class ProcessPaisanoInvoices:
             common = token_set.intersection(cat_tokens)
             if not common:
                 continue
-            score = len(common) / max(len(cat_tokens), 1)
+            # Score based on both product tokens AND catalog tokens
+            # to avoid partial matches like "FRIJOL CALIMA*500G" matching "FRIJOL CALIMA AGRANEL"
+            score = len(common) / max(len(cat_tokens), len(token_set))
             if score > best_score:
                 best_score = score
                 best_factor = factor
-        # Require minimum overlap; otherwise 1
-        return best_factor if best_score >= 0.5 else Decimal("1")
+        # Require almost exact match (95%); otherwise 1
+        return best_factor if best_score >= 0.95 else Decimal("1")
