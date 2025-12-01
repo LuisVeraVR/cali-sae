@@ -16,11 +16,11 @@ class ProcessPaisanoInvoices:
     """Use case for processing El Paisano invoices from XML folders"""
 
     # Conversion map: normalized product name -> factor to kilos
-    # SOLO incluir productos A GRANEL (factor = kg por saco)
-    # Productos con gramos/volumen usan extracción automática
+    # Incluye productos A GRANEL y productos con conversiones específicas del catálogo
     CONVERSION_MAP = {
-        # Productos A GRANEL (sacos de 50 kg)
+        # Productos A GRANEL (bultos/sacos de 50 kg)
         "ARROZ AGRANEL": Decimal("50"),
+        "ARROZ A GRANEL": Decimal("50"),
         "ARVEJA VERDE AGRANEL": Decimal("50"),
         "ARVEJA VERDE A GRANEL": Decimal("50"),
         "BLANQUILLO AGRANEL FRIJOL": Decimal("50"),
@@ -32,9 +32,69 @@ class ProcessPaisanoInvoices:
         "FRIJOL CARG/TO A GRANEL": Decimal("50"),
         "GARBANZO AGRANEL": Decimal("50"),
         "LENTEJA A GRANEL": Decimal("50"),
+        "CEBADA PERLADA A GRANEL CON IVA": Decimal("50"),
+
+        # ACEITES (usando densidad 1.0 kg/litro para simplificar)
+        # ACEITE*500ML: 24 unidades = 12 kg → 0.5 kg/unidad
+        "ACEITE*500ML REF FRISOYA": Decimal("0.5"),
+        "ACEITE SOYA*500CC LA ORLANDESA E": Decimal("0.5"),
+        "ACEITE SOYA*500CC SU ACEITE": Decimal("0.5"),
+        "ACEITE SAN MIGUEL DE SOYA*500CC": Decimal("0.5"),
+        "ACEITE SOYA*250CC LA ORLANDESA": Decimal("0.25"),
+        "ACEITE SAN MIGUEL DE SOYA*250CC": Decimal("0.25"),
+
+        # ACEITE*1000ML: 12 unidades = 12 kg → 1 kg/unidad
+        "ACEITE*1000ML REF FRISOYA": Decimal("1"),
+        "ACEITE SOYA*1000CC LA ORLANDESA E": Decimal("1"),
+        "ACEITE SAN MIGUEL DE SOYA*1000CC": Decimal("1"),
+
+        # ACEITE*2000ML: 6 unidades = 12 kg → 2 kg/unidad
+        "ACEITE*2000ML REF FRISOYA": Decimal("2"),
+
+        # ACEITE*3000ML: 1 caja = 18 kg (6 unidades) → 3 kg/unidad
+        "ACEITE*3000ML REF FRISOYA": Decimal("3"),
+        "ACEITE SOYA*3000CC LA ORLANDESA": Decimal("3"),
+        "ACEITE SAN MIGUEL DE SOYA*3000CC": Decimal("3"),
+
+        # ACEITE*5000ML: 2 unidades = 6 kg → 3 kg/unidad
+        "ACEITE*5000ML REF FRISOYA": Decimal("3"),
+        "ACEITE SOYA*5000CC LA ORLANDESA E": Decimal("5"),
+        "ACEITE SAN MIGUEL DE SOYA*5000CC": Decimal("5"),
+
+        # SEMILLAS
+        # SEMILLA GIRASOL x GRANEL: bulto = 20 kg
+        "SEMILLA GIRASOL x GRANEL": Decimal("20"),
+        "SEMILLA GIRASOL AGRANEL": Decimal("20"),
+        # SEMILLA GIRASOL*200G: 12 unidades = 2.4 kg → 0.2 kg/unidad
+        "SEMILLA GIRASOL*200G": Decimal("0.2"),
+
+        # HOJUELAS AZUCARADAS
+        # HOJUELAS AZUCARADAS*40G: 80 unidades = 3.2 kg → 0.04 kg/unidad
+        "HOJUELAS AZUCARADAS*40G": Decimal("0.04"),
+
+        # LECHE EN POLVO
+        # LECHE*380G: 12 unidades = 4.56 kg → 0.38 kg/unidad
+        "LECHE EN POLVO*380G ENTERA DONA VACA": Decimal("0.38"),
+        "LECHE EN POLVO*380GR ENTERA NUTRALAC": Decimal("0.38"),
+        "LECHE EN POLVO*380GR ENTERA DONA VACA": Decimal("0.38"),
+        # LECHE*900G: usar extracción automática (0.9 kg)
+        "LECHE EN POLVO*900GR ENTERA NUTRALAC": Decimal("0.9"),
+        "LECHE EN POLVO*900GR ENTERA DONA VACA": Decimal("0.9"),
+        "LECHE EN POLVO*900G ENTERA DONA VACA": Decimal("0.9"),
+
+        # AZUCAR
+        # AZUCAR BLANCO*1KG: paca = 25 kg (25 unidades × 1 kg)
+        "AZUCAR BLANCO*1KG PROVIDENCIA": Decimal("1"),
+
+        # PANELA
+        # PANELA*125G*8UND TEJO: usar extracción automática (0.125 kg × 8 = 1 kg por paquete)
+        "PANELA*125G*8UND TEJO": Decimal("1"),
+        "PANELA TEJO/8UND*125GR": Decimal("1"),
 
         # Productos especiales sin gramos/volumen (mantener como unidades)
         "GALLETAS CRAKENAS CLUB IND 8*10": Decimal("1"),
+        "TOALLA COCINA BCO NUBE": Decimal("1"),
+        "SERVILLETA BCA NUBE*300UND": Decimal("1"),
     }
 
     def __init__(
@@ -257,8 +317,8 @@ class ProcessPaisanoInvoices:
         normalized_tokens = self._normalize_tokens(product_name)
         catalog_factor = self._match_factor(normalized_tokens)
 
-        # If found in catalog, use that factor
-        if catalog_factor != Decimal("1"):
+        # If found in catalog, use that factor (even if it's 1)
+        if catalog_factor is not None:
             return catalog_factor
 
         # PRIORITY 2: Not in catalog, try to extract grams from name
@@ -270,21 +330,26 @@ class ProcessPaisanoInvoices:
         # PRIORITY 3: Try to extract volume in CC for liquids
         volume_cc = self._extract_volume_cc_from_name(product_name)
         if volume_cc > 0:
-            # For oil: density ≈ 0.92 g/ml, so 500CC ≈ 460g ≈ 0.46 kg
-            # For simplicity, we use 0.92 as default density for oils
-            density = Decimal("0.92")
+            # For oil: using density = 1.0 kg/litro for simplification
+            # 500CC = 0.5 litros = 0.5 kg, 1000CC = 1 litro = 1 kg
+            density = Decimal("1.0")
             kg_per_unit = (Decimal(str(volume_cc)) / Decimal("1000")) * density
             return kg_per_unit
 
         # No conversion info found, return 1 (keep as units)
         return Decimal("1")
 
-    def _match_factor(self, tokens: List[str]) -> Decimal:
-        """Find best factor by token overlap; fallback 1"""
+    def _match_factor(self, tokens: List[str]):
+        """
+        Find best factor by token overlap.
+
+        Returns:
+            Decimal if found in catalog with score >= 0.95, None otherwise
+        """
         if not tokens:
-            return Decimal("1")
+            return None
         best_score = 0.0
-        best_factor = Decimal("1")
+        best_factor = None
         token_set = set(tokens)
         for _, factor, cat_tokens in self._normalized_catalog:
             common = token_set.intersection(cat_tokens)
@@ -296,5 +361,5 @@ class ProcessPaisanoInvoices:
             if score > best_score:
                 best_score = score
                 best_factor = factor
-        # Require almost exact match (95%); otherwise 1
-        return best_factor if best_score >= 0.95 else Decimal("1")
+        # Require almost exact match (95%); otherwise None
+        return best_factor if best_score >= 0.95 else None
