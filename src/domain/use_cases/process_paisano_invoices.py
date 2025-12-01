@@ -15,106 +15,89 @@ from ..repositories.report_repository import ReportRepositoryInterface
 class ProcessPaisanoInvoices:
     """Use case for processing El Paisano invoices from XML folders"""
 
+    # Conversion map: normalized product name -> factor to kilos
+    # Incluye productos A GRANEL y productos con conversiones específicas del catálogo
     # Conversion map: normalized product name -> Presentacion (units per box/bulk)
     # These values represent how many units come in a box/bulk
     # Formula used: kilos_totales = (Presentacion × gramos / 1000) × Cantidad
     CONVERSION_MAP = {
-        "ACEITE SOYA*500CC LA ORLANDESA E": Decimal("24"),
-        "ARVEJA VERDE*500G": Decimal("25"),
-        "ARVEJA VERDE*250G": Decimal("25"),
-        "ARROZ*500G": Decimal("25"),
-        "AVENA HOJUELA*250G": Decimal("24"),
-        "ATUN ROBIN/H LOMO/AGUA*175G": Decimal("48"),
-        "ATUN SABOR/P*175G LOMO/ACEITE": Decimal("48"),
-        "ATUN SABOR/P*175G LOMO/AGUA": Decimal("48"),
-        "AVENA HOJUELA*200G": Decimal("48"),
-        "AVENA HOJUELA*500G": Decimal("24"),
-        "BLANQUILLO*250G FRIJOL": Decimal("25"),
-        "FRIJOL CALIMA*500G": Decimal("25"),
-        "FRIJOL CALIMA*250G": Decimal("25"),
-        "FRIJOL PALICERO*500G": Decimal("25"),
-        "GARBANZO*500G": Decimal("25"),
-        "BLANQUILLO*500G FRIJOL": Decimal("25"),
-        "FRIJOL CARG/TO*500G": Decimal("25"),
-        "FRIJOL BOLON*500G": Decimal("25"),
-        "HARINA AREPA*500G BLANCA": Decimal("24"),
-        "HARINA AREPA*500G AMARILLA": Decimal("24"),
-        "HARINA TRIGO UND*500G LA VECINA": Decimal("25"),
-        "ACEITE SOYA*250CC LA ORLANDESA": Decimal("24"),
-        "ACEITE SOYA*500CC SU ACEITE": Decimal("24"),
-        "ACEITE SOYA*900CC LA ORLANDESA E": Decimal("12"),
-        "ACEITE SOYA*1000CC LA ORLANDESA E": Decimal("12"),
-        "HARINA DE TRIGO FARALLONES*500GR": Decimal("25"),
-        "PANELA*500GR": Decimal("48"),
-        "PANELA REDONDA/2UND*500GR 1000GR": Decimal("24"),
-        "LENTEJA*500G": Decimal("25"),
-        "LENTEJA*250G": Decimal("25"),
-        "MAIZ PIRA*500G": Decimal("25"),
-        "MAZAMORRA*500G BLANCA": Decimal("25"),
-        "PASTA SANTALI*250G MACARRONCITO": Decimal("24"),
+        # Productos A GRANEL (bultos/sacos de 50 kg)
         "ARROZ AGRANEL": Decimal("50"),
-        "FRIJOL CARAOTA AGRANEL": Decimal("50"),
-        "PASTA SANTALI*250G C/ANGEL": Decimal("24"),
-        "PASTA COMARRICO*500 C/ANGEL": Decimal("12"),
-        "PASTA COMARRICO*500G SPAGUETTI": Decimal("12"),
-        "PASTA ZONIA*250G CONCHITA": Decimal("24"),
-        "PASTA ZONIA*250G MACARRON": Decimal("24"),
-        "PASTA SANTALI*250G CONCHITA": Decimal("24"),
-        "PASTA ZONIA*200G ESPAGUETTI": Decimal("24"),
-        "PASTA ZONIA*250G C/ANGEL": Decimal("24"),
-        "PASTA SANTALI*250G SPAGUETTI": Decimal("24"),
-        "PASTA ZONIA*250G CORBATA": Decimal("24"),
-        "PASTA ZONIA*250G SPAGUETTI": Decimal("24"),
+        "ARROZ A GRANEL": Decimal("50"),
         "ARVEJA VERDE AGRANEL": Decimal("50"),
-        "FRIJOL CALIMA AGRANEL": Decimal("50"),
-        "LENTEJA A GRANEL": Decimal("50"),
-        "FRIJOL CARG/TO AGRANEL": Decimal("50"),
-        "CUCHUCO*450G GRUESO VALLE": Decimal("25"),
-        "PASTA ZONIA*200G C/ANGEL": Decimal("24"),
-        "PANELA REDONDA*24KILOS": Decimal("24"),
-        "PANELA REDONDA*500GR": Decimal("48"),
-        "FRIJOL CARAOTA*500G": Decimal("25"),
-        "AZUCAR BLANCA*500G": Decimal("25"),
-        "AZUCAR BLANCA*50KG": Decimal("50"),
-        "ACEITE SOYA*3000CC LA ORLANDESA": Decimal("51"),
-        "LECHE EN POLVO*380GR ENTERA NUTRALAC": Decimal("30"),
-        "ARROZ BONGUERO*500G": Decimal("25"),
-        "ARROZ SONORA*500GR": Decimal("25"),
-        "PANELA TEJO/8UND*125GR": Decimal("8"),
-        "HARINA TRIGO*500G LA MONJITA": Decimal("24"),
-        "LECHE EN POLVO*900GR ENTERA NUTRALAC": Decimal("13"),
-        "BLANQUILLO AGRANEL FRIJOL": Decimal("50"),
-        "GARBANZO AGRANEL": Decimal("50"),
-        "ACEITE SOYA*5000CC LA ORLANDESA E": Decimal("4"),
-        "ARROZ SONORA*250GR": Decimal("50"),
-        "GALLETAS CRAKENAS CLUB IND 8*10": Decimal("1"),
-        "LECHE EN POLVO*380GR ENTERA DONA VACA": Decimal("30"),
-        "LECHE EN POLVO*900GR ENTERA DONA VACA": Decimal("13"),
-        "ATUN D/SANCHO*175G LOMO/AGUA": Decimal("48"),
-        "ACEITE SAN MIGUEL DE SOYA*500CC": Decimal("24"),
-        "ACEITE SAN MIGUEL DE SOYA*3000CC": Decimal("51"),
-        "ACEITE SAN MIGUEL DE SOYA*5000CC": Decimal("4"),
-        "ACEITE SAN MIGUEL DE SOYA*1000CC": Decimal("12"),
-        "PANELA*500GR CUADRADA": Decimal("48"),
-        "AZUCAR*500GR CARMELITA": Decimal("25"),
-        "FRIJOL CALIMA A GRANEL": Decimal("50"),
-        "ARROZ SONORA*500G": Decimal("25"),
-        "AZUCAR*500G CARMELITA": Decimal("25"),
-        "AZUCAR CARMELITA*500GR**": Decimal("25"),
-        "PASTA C/ANGEL*250G ZONIA**": Decimal("24"),
-        "PASTA SPAGUETTI*250G ZONIA**": Decimal("24"),
-        "HARINA DE TRIGO*500G LA MONJITA**": Decimal("24"),
-        "LECHE EN POLVO*900G ENTERA DONA VACA": Decimal("13"),
-        "PASTA CONCHA*250G ZONIA**": Decimal("24"),
-        "HARINA DE TRIGO*500G LA VECINA**": Decimal("25"),
-        "BLANQUILLO A GRANEL FRIJOL": Decimal("50"),
-        "HARINA DE TRIGO*500G LA VECINA": Decimal("25"),
-        "FRIJOL CARG/TO*250G": Decimal("25"),
         "ARVEJA VERDE A GRANEL": Decimal("50"),
-        "ACEITE SAN MIGUEL DE SOYA*250CC": Decimal("48"),
-        "HOJUELAS DE MAIZ*220G SUNSHINE": Decimal("12"),
+        "BLANQUILLO AGRANEL FRIJOL": Decimal("50"),
+        "BLANQUILLO A GRANEL FRIJOL": Decimal("50"),
+        "FRIJOL CALIMA AGRANEL": Decimal("50"),
+        "FRIJOL CALIMA A GRANEL": Decimal("50"),
+        "FRIJOL CARAOTA AGRANEL": Decimal("50"),
+        "FRIJOL CARG/TO AGRANEL": Decimal("50"),
         "FRIJOL CARG/TO A GRANEL": Decimal("50"),
-        "PASTA ZONIA*250G ESPAGUETI": Decimal("24"),
+        "GARBANZO AGRANEL": Decimal("50"),
+        "LENTEJA A GRANEL": Decimal("50"),
+        "CEBADA PERLADA A GRANEL CON IVA": Decimal("50"),
+
+        # ACEITES (usando densidad 1.0 kg/litro para simplificar)
+        # ACEITE*500ML: 24 unidades = 12 kg → 0.5 kg/unidad
+        "ACEITE*500ML REF FRISOYA": Decimal("0.5"),
+        "ACEITE SOYA*500CC LA ORLANDESA E": Decimal("0.5"),
+        "ACEITE SOYA*500CC SU ACEITE": Decimal("0.5"),
+        "ACEITE SAN MIGUEL DE SOYA*500CC": Decimal("0.5"),
+        "ACEITE SOYA*250CC LA ORLANDESA": Decimal("0.25"),
+        "ACEITE SAN MIGUEL DE SOYA*250CC": Decimal("0.25"),
+
+        # ACEITE*1000ML: 12 unidades = 12 kg → 1 kg/unidad
+        "ACEITE*1000ML REF FRISOYA": Decimal("1"),
+        "ACEITE SOYA*1000CC LA ORLANDESA E": Decimal("1"),
+        "ACEITE SAN MIGUEL DE SOYA*1000CC": Decimal("1"),
+
+        # ACEITE*2000ML: 6 unidades = 12 kg → 2 kg/unidad
+        "ACEITE*2000ML REF FRISOYA": Decimal("2"),
+
+        # ACEITE*3000ML: 1 caja = 18 kg (6 unidades) → 3 kg/unidad
+        "ACEITE*3000ML REF FRISOYA": Decimal("3"),
+        "ACEITE SOYA*3000CC LA ORLANDESA": Decimal("3"),
+        "ACEITE SAN MIGUEL DE SOYA*3000CC": Decimal("3"),
+
+        # ACEITE*5000ML: 2 unidades = 6 kg → 3 kg/unidad
+        "ACEITE*5000ML REF FRISOYA": Decimal("3"),
+        "ACEITE SOYA*5000CC LA ORLANDESA E": Decimal("5"),
+        "ACEITE SAN MIGUEL DE SOYA*5000CC": Decimal("5"),
+
+        # SEMILLAS
+        # SEMILLA GIRASOL x GRANEL: bulto = 20 kg
+        "SEMILLA GIRASOL x GRANEL": Decimal("20"),
+        "SEMILLA GIRASOL AGRANEL": Decimal("20"),
+        # SEMILLA GIRASOL*200G: 12 unidades = 2.4 kg → 0.2 kg/unidad
+        "SEMILLA GIRASOL*200G": Decimal("0.2"),
+
+        # HOJUELAS AZUCARADAS
+        # HOJUELAS AZUCARADAS*40G: 80 unidades = 3.2 kg → 0.04 kg/unidad
+        "HOJUELAS AZUCARADAS*40G": Decimal("0.04"),
+
+        # LECHE EN POLVO
+        # LECHE*380G: 12 unidades = 4.56 kg → 0.38 kg/unidad
+        "LECHE EN POLVO*380G ENTERA DONA VACA": Decimal("0.38"),
+        "LECHE EN POLVO*380GR ENTERA NUTRALAC": Decimal("0.38"),
+        "LECHE EN POLVO*380GR ENTERA DONA VACA": Decimal("0.38"),
+        # LECHE*900G: usar extracción automática (0.9 kg)
+        "LECHE EN POLVO*900GR ENTERA NUTRALAC": Decimal("0.9"),
+        "LECHE EN POLVO*900GR ENTERA DONA VACA": Decimal("0.9"),
+        "LECHE EN POLVO*900G ENTERA DONA VACA": Decimal("0.9"),
+
+        # AZUCAR
+        # AZUCAR BLANCO*1KG: paca = 25 kg (25 unidades × 1 kg)
+        "AZUCAR BLANCO*1KG PROVIDENCIA": Decimal("1"),
+
+        # PANELA
+        # PANELA*125G*8UND TEJO: usar extracción automática (0.125 kg × 8 = 1 kg por paquete)
+        "PANELA*125G*8UND TEJO": Decimal("1"),
+        "PANELA TEJO/8UND*125GR": Decimal("1"),
+
+        # Productos especiales sin gramos/volumen (mantener como unidades)
+        "GALLETAS CRAKENAS CLUB IND 8*10": Decimal("1"),
+        "TOALLA COCINA BCO NUBE": Decimal("1"),
+        "SERVILLETA BCA NUBE*300UND": Decimal("1"),
     }
 
     def __init__(
@@ -341,7 +324,11 @@ class ProcessPaisanoInvoices:
 
         # Step 1: Get Presentacion from catalog (units per bulk)
         normalized_tokens = self._normalize_tokens(product_name)
-        presentacion = self._match_factor(normalized_tokens)  # Returns catalog value or 1
+        catalog_factor = self._match_factor(normalized_tokens)
+
+        # If found in catalog, use that factor (even if it's 1)
+        if catalog_factor is not None:
+            return catalog_factor
 
         # Step 2: Extract grams from product name
         grams = self._extract_grams_from_name(product_name)
@@ -357,26 +344,42 @@ class ProcessPaisanoInvoices:
         # Step 3: Calculate conversion factor
         # Formula: (Presentacion × gramos / 1000) = kg per invoiced unit
         if grams > 0:
-            factor = (presentacion * Decimal(str(grams))) / Decimal("1000")
-            return factor
+            # Convert grams to kg: 500G -> 0.5 kg per unit
+            return Decimal(str(grams)) / Decimal("1000")
 
-        # No grams found, cannot convert
+        # PRIORITY 3: Try to extract volume in CC for liquids
+        volume_cc = self._extract_volume_cc_from_name(product_name)
+        if volume_cc > 0:
+            # For oil: using density = 1.0 kg/litro for simplification
+            # 500CC = 0.5 litros = 0.5 kg, 1000CC = 1 litro = 1 kg
+            density = Decimal("1.0")
+            kg_per_unit = (Decimal(str(volume_cc)) / Decimal("1000")) * density
+            return kg_per_unit
+
+        # No conversion info found, return 1 (keep as units)
         return Decimal("1")
 
-    def _match_factor(self, tokens: List[str]) -> Decimal:
-        """Find best factor by token overlap; fallback 1"""
+    def _match_factor(self, tokens: List[str]):
+        """
+        Find best factor by token overlap.
+
+        Returns:
+            Decimal if found in catalog with score >= 0.95, None otherwise
+        """
         if not tokens:
-            return Decimal("1")
+            return None
         best_score = 0.0
-        best_factor = Decimal("1")
+        best_factor = None
         token_set = set(tokens)
         for _, factor, cat_tokens in self._normalized_catalog:
             common = token_set.intersection(cat_tokens)
             if not common:
                 continue
-            score = len(common) / max(len(cat_tokens), 1)
+            # Score based on both product tokens AND catalog tokens
+            # to avoid partial matches like "FRIJOL CALIMA*500G" matching "FRIJOL CALIMA AGRANEL"
+            score = len(common) / max(len(cat_tokens), len(token_set))
             if score > best_score:
                 best_score = score
                 best_factor = factor
-        # Require minimum overlap; otherwise 1
-        return best_factor if best_score >= 0.5 else Decimal("1")
+        # Require almost exact match (95%); otherwise None
+        return best_factor if best_score >= 0.95 else None
