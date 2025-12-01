@@ -456,12 +456,14 @@ class ProcessPaisanoInvoices:
         """
         Find best factor by intelligent component matching.
 
-        This improved algorithm handles variations in word order and focuses on
-        key components (product type + measurements) rather than exact token matches.
+        Strategy:
+        1. Prefer exact matches (same size: ALPISTE*450G matches ALPISTE*450G)
+        2. Allow category matches (any size: ALPISTE*450G matches ALPISTE)
 
-        Examples that now match:
-        - "ACEITE 500CC" vs "500CC ACEITE"
-        - "ACEITE SOYA 500CC LA ORLANDESA" vs "ACEITE SOYA 500CC"
+        This allows:
+        - "ALPISTE*450G" to match "ALPISTE" (category: Granos = 25)
+        - "HOJUELAS AZUCARADAS*40G" to match exact entry if exists
+        - "ACEITE 500CC" vs "500CC ACEITE" (order independent)
 
         Returns:
             Decimal if found in catalog with good match, None otherwise
@@ -477,6 +479,7 @@ class ProcessPaisanoInvoices:
 
         best_score = 0.0
         best_factor = None
+        best_match_type = None
 
         for _, factor, cat_tokens in self._normalized_catalog:
             # Extract components from catalog entry
@@ -494,28 +497,35 @@ class ProcessPaisanoInvoices:
             if not core_overlap:
                 continue  # No core product match
 
-            # Score calculation with weights:
-            # - Core words: 50% weight (must match)
-            # - Measurements: 40% weight (important for size/quantity)
-            # - Modifiers: 10% weight (nice to have but not critical)
-
             # Core score: intersection / smaller set (allows catalog to have more words)
             core_score = len(core_overlap) / min(len(input_core), len(cat_core)) if input_core and cat_core else 0
 
-            # Measurement score
-            if input_measurements or cat_measurements:
+            # Measurement score with TWO modes:
+            # Mode 1: Both have measurements → strict match (prefer exact size matches)
+            # Mode 2: Catalog has no measurements → flexible match (category-level)
+            if input_measurements and cat_measurements:
+                # Both have measurements - check if they match
                 measurement_overlap = input_measurements.intersection(cat_measurements)
-                # For measurements, we want exact match if they exist
-                if input_measurements and cat_measurements:
-                    measurement_score = len(measurement_overlap) / len(input_measurements)
-                elif not input_measurements and cat_measurements:
-                    # Input has no measurements but catalog does - ok if core matches
-                    measurement_score = 0.5
+                if measurement_overlap:
+                    # Exact size match - PRIORITY
+                    measurement_score = 1.0
+                    match_type = "exact"
                 else:
-                    # Input has measurements but catalog doesn't
-                    measurement_score = 0.3
+                    # Different sizes - low score
+                    measurement_score = 0.2
+                    match_type = "different_size"
+            elif not cat_measurements:
+                # Catalog entry has NO measurements (category-level entry like "ALPISTE", "FRIJOL CALIMA")
+                # This is PERFECT for any size variant
+                measurement_score = 1.0
+                match_type = "category"
+            elif not input_measurements:
+                # Input has no measurements but catalog does
+                measurement_score = 0.5
+                match_type = "partial"
             else:
-                measurement_score = 1.0  # No measurements in either
+                measurement_score = 1.0
+                match_type = "none"
 
             # Modifier score (less critical)
             if input_modifiers or cat_modifiers:
@@ -528,17 +538,27 @@ class ProcessPaisanoInvoices:
                 modifier_score = 1.0  # No modifiers in either
 
             # Weighted final score
+            # Increased weight for core (60%) and measurements (30%)
             final_score = (
-                core_score * 0.50 +
-                measurement_score * 0.40 +
+                core_score * 0.60 +
+                measurement_score * 0.30 +
                 modifier_score * 0.10
             )
 
-            if final_score > best_score:
+            # Prioritize exact matches over category matches
+            if match_type == "exact" and final_score >= best_score:
                 best_score = final_score
                 best_factor = factor
+                best_match_type = match_type
+            elif match_type == "category" and (best_match_type != "exact") and final_score >= best_score:
+                best_score = final_score
+                best_factor = factor
+                best_match_type = match_type
+            elif final_score > best_score and best_match_type not in ["exact", "category"]:
+                best_score = final_score
+                best_factor = factor
+                best_match_type = match_type
 
-        # Require strong match (75%+) - lowered from 95% to handle variations
-        # This allows "ACEITE 500CC" to match "ACEITE SOYA 500CC LA ORLANDESA"
-        # as long as core product type and measurement match
-        return best_factor if best_score >= 0.75 else None
+        # Require good match (70%+) - lowered from 75% to handle more variations
+        # This allows category-level matches while still maintaining precision
+        return best_factor if best_score >= 0.70 else None

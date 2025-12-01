@@ -130,7 +130,14 @@ class ProductConverter:
         """
         Find presentation value for product using intelligent fuzzy matching.
 
-        Handles variations in word order and focuses on key components.
+        Strategy:
+        1. First try exact match (including measurements)
+        2. If not found, try matching by product name only (ignore measurements)
+
+        This allows:
+        - "ALPISTE*450G" to match "ALPISTE" (category-level presentation)
+        - "HOJUELAS AZUCARADAS*40G" to match exact entry if exists
+
         Returns None if no good match found.
         """
         tokens = self._normalize_tokens(product_name)
@@ -145,6 +152,7 @@ class ProductConverter:
 
         best_score = 0.0
         best_presentacion = None
+        best_match_type = None
 
         for _, presentacion, cat_tokens in self._normalized_catalog:
             # Extract components from catalog entry
@@ -164,17 +172,32 @@ class ProductConverter:
             # Calculate component scores
             core_score = len(core_overlap) / min(len(input_core), len(cat_core))
 
-            # Measurement score
-            if input_measurements or cat_measurements:
+            # Measurement score with TWO modes:
+            # Mode 1: Both have measurements → strict match (prefer exact size matches)
+            # Mode 2: Catalog has no measurements → flexible match (category-level)
+            if input_measurements and cat_measurements:
+                # Both have measurements - check if they match
                 measurement_overlap = input_measurements.intersection(cat_measurements)
-                if input_measurements and cat_measurements:
-                    measurement_score = len(measurement_overlap) / len(input_measurements)
-                elif not input_measurements and cat_measurements:
-                    measurement_score = 0.5
+                if measurement_overlap:
+                    # Exact size match - PRIORITY
+                    measurement_score = 1.0
+                    match_type = "exact"
                 else:
-                    measurement_score = 0.3
+                    # Different sizes - low score
+                    measurement_score = 0.2
+                    match_type = "different_size"
+            elif not cat_measurements:
+                # Catalog entry has NO measurements (category-level entry like "ALPISTE", "FRIJOL CALIMA")
+                # This is PERFECT for any size variant
+                measurement_score = 1.0
+                match_type = "category"
+            elif not input_measurements:
+                # Input has no measurements but catalog does
+                measurement_score = 0.5
+                match_type = "partial"
             else:
                 measurement_score = 1.0
+                match_type = "none"
 
             # Modifier score
             if input_modifiers or cat_modifiers:
@@ -187,18 +210,29 @@ class ProductConverter:
                 modifier_score = 1.0
 
             # Weighted final score
+            # Increased weight for core (60%) and measurements (30%)
             final_score = (
-                core_score * 0.50 +
-                measurement_score * 0.40 +
+                core_score * 0.60 +
+                measurement_score * 0.30 +
                 modifier_score * 0.10
             )
 
-            if final_score > best_score:
+            # Prioritize exact matches over category matches
+            if match_type == "exact" and final_score >= best_score:
                 best_score = final_score
                 best_presentacion = presentacion
+                best_match_type = match_type
+            elif match_type == "category" and (best_match_type != "exact") and final_score >= best_score:
+                best_score = final_score
+                best_presentacion = presentacion
+                best_match_type = match_type
+            elif final_score > best_score and best_match_type not in ["exact", "category"]:
+                best_score = final_score
+                best_presentacion = presentacion
+                best_match_type = match_type
 
-        # Require strong match (75%+)
-        return best_presentacion if best_score >= 0.75 else None
+        # Require good match (70%+)
+        return best_presentacion if best_score >= 0.70 else None
 
     def _extract_grams_from_name(self, product_name: str) -> int:
         """
