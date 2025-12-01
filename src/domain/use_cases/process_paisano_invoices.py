@@ -307,6 +307,7 @@ class ProcessPaisanoInvoices:
 
     def _normalize_tokens(self, name: str) -> List[str]:
         """Normalize product name into a list of tokens for fuzzy matching"""
+        import re
         if not name:
             return []
         # Remove accents, uppercase, strip non-alnum
@@ -315,10 +316,71 @@ class ProcessPaisanoInvoices:
         cleaned = cleaned.upper()
         for ch in "*-/_,.;":
             cleaned = cleaned.replace(ch, " ")
+
+        # Normalize measurement units BEFORE tokenization
+        # Convert common variations to standard forms
+        # GR/GRAMOS -> G, ML -> CC, KILO/KILOS -> KG
+        cleaned = re.sub(r'(\d+)\s*(?:GR|GRAMOS)\b', r'\1G', cleaned)
+        cleaned = re.sub(r'(\d+)\s*ML\b', r'\1CC', cleaned)
+        cleaned = re.sub(r'(\d+)\s*(?:KILO|KILOS)\b', r'\1KG', cleaned)
+
         tokens = cleaned.split()
-        # Remove common stopwords
+        # Remove common stopwords (but not "EN" when part of "EN POLVO")
         stop = {"DE", "LA", "EL", "LOS", "LAS", "A", "AL", "DEL"}
         return [t for t in tokens if t and t not in stop]
+
+    def _extract_key_components(self, tokens: List[str]) -> dict:
+        """
+        Extract key components from tokenized product name
+        Returns dict with:
+        - core_words: main product words (ACEITE, FRIJOL, ARROZ, etc.)
+        - measurements: unit measurements (500G, 1KG, 250CC, etc.)
+        - modifiers: descriptive words (AGRANEL, BLANCA, VERDE, etc.)
+        """
+        import re
+
+        core_words = []
+        measurements = []
+        modifiers = []
+
+        # Common product categories (always core words)
+        product_categories = {
+            "ACEITE", "FRIJOL", "ARROZ", "ARVEJA", "PANELA", "HARINA",
+            "PASTA", "LECHE", "AZUCAR", "LENTEJA", "GARBANZO", "BLANQUILLO",
+            "ATUN", "AVENA", "MAIZ", "GALLETAS", "SEMILLA", "HOJUELAS",
+            "BLANCUILLO", "TOALLA", "SERVILLETA", "CEBADA"
+        }
+
+        # Common modifiers/descriptors
+        common_modifiers = {
+            "AGRANEL", "GRANEL", "BLANCA", "BLANCO", "VERDE", "CALIMA",
+            "PERLADA", "CARAOTA", "PALICERO", "BOLA", "MORENA", "PIRA",
+            "GIRASOL", "AZUCARADAS", "POLVO", "ENTERA", "COCINA", "IND",
+            "CLUB", "BCO", "NUBE", "CARMELITA", "REDONDA", "DONA", "VACA",
+            "NUTRALAC", "PROVIDENCIA", "TEJO", "SALTALI", "COMARRICO",
+            "ZONIA", "CARACOL", "MACARRONCITO", "SPAGHETTI", "CONCHITA",
+            "CORBATA", "CODITO", "GRUESO", "VALLE", "ANGEL", "ORLANDESA",
+            "FRISOYA", "MIGUEL", "REF", "CRAKENAS", "TRICOLOR"
+        }
+
+        for token in tokens:
+            # Check if it's a measurement (contains numbers + units)
+            if re.search(r'\d+', token):
+                # Has numbers - likely a measurement
+                measurements.append(token)
+            elif token in product_categories:
+                core_words.append(token)
+            elif token in common_modifiers:
+                modifiers.append(token)
+            else:
+                # Unknown word - treat as core word (could be brand or product type)
+                core_words.append(token)
+
+        return {
+            "core_words": core_words,
+            "measurements": measurements,
+            "modifiers": modifiers
+        }
 
     def _calculate_conversion_factor(self, product_name: str) -> Decimal:
         """
@@ -392,25 +454,111 @@ class ProcessPaisanoInvoices:
 
     def _match_factor(self, tokens: List[str]):
         """
-        Find best factor by token overlap.
+        Find best factor by intelligent component matching.
+
+        Strategy:
+        1. Prefer exact matches (same size: ALPISTE*450G matches ALPISTE*450G)
+        2. Allow category matches (any size: ALPISTE*450G matches ALPISTE)
+
+        This allows:
+        - "ALPISTE*450G" to match "ALPISTE" (category: Granos = 25)
+        - "HOJUELAS AZUCARADAS*40G" to match exact entry if exists
+        - "ACEITE 500CC" vs "500CC ACEITE" (order independent)
 
         Returns:
-            Decimal if found in catalog with score >= 0.95, None otherwise
+            Decimal if found in catalog with good match, None otherwise
         """
         if not tokens:
             return None
+
+        # Extract components from input product
+        input_components = self._extract_key_components(tokens)
+        input_core = set(input_components["core_words"])
+        input_measurements = set(input_components["measurements"])
+        input_modifiers = set(input_components["modifiers"])
+
         best_score = 0.0
         best_factor = None
-        token_set = set(tokens)
+        best_match_type = None
+
         for _, factor, cat_tokens in self._normalized_catalog:
-            common = token_set.intersection(cat_tokens)
-            if not common:
+            # Extract components from catalog entry
+            cat_components = self._extract_key_components(cat_tokens)
+            cat_core = set(cat_components["core_words"])
+            cat_measurements = set(cat_components["measurements"])
+            cat_modifiers = set(cat_components["modifiers"])
+
+            # Calculate component-based score
+            # Core words must match (ACEITE, FRIJOL, etc.)
+            if not input_core or not cat_core:
                 continue
-            # Score based on both product tokens AND catalog tokens
-            # to avoid partial matches like "FRIJOL CALIMA*500G" matching "FRIJOL CALIMA AGRANEL"
-            score = len(common) / max(len(cat_tokens), len(token_set))
-            if score > best_score:
-                best_score = score
+
+            core_overlap = input_core.intersection(cat_core)
+            if not core_overlap:
+                continue  # No core product match
+
+            # Core score: intersection / smaller set (allows catalog to have more words)
+            core_score = len(core_overlap) / min(len(input_core), len(cat_core)) if input_core and cat_core else 0
+
+            # Measurement score with TWO modes:
+            # Mode 1: Both have measurements → strict match (prefer exact size matches)
+            # Mode 2: Catalog has no measurements → flexible match (category-level)
+            if input_measurements and cat_measurements:
+                # Both have measurements - check if they match
+                measurement_overlap = input_measurements.intersection(cat_measurements)
+                if measurement_overlap:
+                    # Exact size match - PRIORITY
+                    measurement_score = 1.0
+                    match_type = "exact"
+                else:
+                    # Different sizes - low score
+                    measurement_score = 0.2
+                    match_type = "different_size"
+            elif not cat_measurements:
+                # Catalog entry has NO measurements (category-level entry like "ALPISTE", "FRIJOL CALIMA")
+                # This is PERFECT for any size variant
+                measurement_score = 1.0
+                match_type = "category"
+            elif not input_measurements:
+                # Input has no measurements but catalog does
+                measurement_score = 0.5
+                match_type = "partial"
+            else:
+                measurement_score = 1.0
+                match_type = "none"
+
+            # Modifier score (less critical)
+            if input_modifiers or cat_modifiers:
+                modifier_overlap = input_modifiers.intersection(cat_modifiers)
+                if input_modifiers and cat_modifiers:
+                    modifier_score = len(modifier_overlap) / min(len(input_modifiers), len(cat_modifiers))
+                else:
+                    modifier_score = 0.5  # Partial credit if one is missing
+            else:
+                modifier_score = 1.0  # No modifiers in either
+
+            # Weighted final score
+            # Increased weight for core (60%) and measurements (30%)
+            final_score = (
+                core_score * 0.60 +
+                measurement_score * 0.30 +
+                modifier_score * 0.10
+            )
+
+            # Prioritize exact matches over category matches
+            if match_type == "exact" and final_score >= best_score:
+                best_score = final_score
                 best_factor = factor
-        # Require almost exact match (95%); otherwise None
-        return best_factor if best_score >= 0.95 else None
+                best_match_type = match_type
+            elif match_type == "category" and (best_match_type != "exact") and final_score >= best_score:
+                best_score = final_score
+                best_factor = factor
+                best_match_type = match_type
+            elif final_score > best_score and best_match_type not in ["exact", "category"]:
+                best_score = final_score
+                best_factor = factor
+                best_match_type = match_type
+
+        # Require good match (70%+) - lowered from 75% to handle more variations
+        # This allows category-level matches while still maintaining precision
+        return best_factor if best_score >= 0.70 else None
