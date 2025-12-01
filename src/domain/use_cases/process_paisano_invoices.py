@@ -15,13 +15,15 @@ from ..repositories.report_repository import ReportRepositoryInterface
 class ProcessPaisanoInvoices:
     """Use case for processing El Paisano invoices from XML folders"""
 
-    # Conversion map: normalized product name -> factor to kilos
-    # Incluye productos A GRANEL y productos con conversiones específicas del catálogo
     # Conversion map: normalized product name -> Presentacion (units per box/bulk)
-    # These values represent how many units come in a box/bulk
+    # These values represent how many units come in a box/bulk package
     # Formula used: kilos_totales = (Presentacion × gramos / 1000) × Cantidad
+    #
+    # Para productos A GRANEL: la Presentacion es el peso del bulto en kg
+    # Para productos empacados: la Presentacion es el número de unidades por caja
     CONVERSION_MAP = {
-        # Productos A GRANEL (bultos/sacos de 50 kg)
+        # Productos A GRANEL (peso del bulto en kg)
+        # Estos ya son kg directos, no necesitan conversión adicional
         "ARROZ AGRANEL": Decimal("50"),
         "ARROZ A GRANEL": Decimal("50"),
         "ARVEJA VERDE AGRANEL": Decimal("50"),
@@ -37,62 +39,66 @@ class ProcessPaisanoInvoices:
         "LENTEJA A GRANEL": Decimal("50"),
         "CEBADA PERLADA A GRANEL CON IVA": Decimal("50"),
 
-        # ACEITES (usando densidad 1.0 kg/litro para simplificar)
-        # ACEITE*500ML: 24 unidades = 12 kg → 0.5 kg/unidad
-        "ACEITE*500ML REF FRISOYA": Decimal("0.5"),
-        "ACEITE SOYA*500CC LA ORLANDESA E": Decimal("0.5"),
-        "ACEITE SOYA*500CC SU ACEITE": Decimal("0.5"),
-        "ACEITE SAN MIGUEL DE SOYA*500CC": Decimal("0.5"),
-        "ACEITE SOYA*250CC LA ORLANDESA": Decimal("0.25"),
-        "ACEITE SAN MIGUEL DE SOYA*250CC": Decimal("0.25"),
+        # ACEITES (Presentacion = unidades por caja)
+        # ACEITE*500ML: 24 unidades por caja → (24 × 500ml / 1000) = 12 kg por caja
+        "ACEITE*500ML REF FRISOYA": Decimal("24"),
+        "ACEITE SOYA*500CC LA ORLANDESA E": Decimal("24"),
+        "ACEITE SOYA*500CC SU ACEITE": Decimal("24"),
+        "ACEITE SAN MIGUEL DE SOYA*500CC": Decimal("24"),
+        "ACEITE SOYA*250CC LA ORLANDESA": Decimal("24"),
+        "ACEITE SAN MIGUEL DE SOYA*250CC": Decimal("24"),
 
-        # ACEITE*1000ML: 12 unidades = 12 kg → 1 kg/unidad
-        "ACEITE*1000ML REF FRISOYA": Decimal("1"),
-        "ACEITE SOYA*1000CC LA ORLANDESA E": Decimal("1"),
-        "ACEITE SAN MIGUEL DE SOYA*1000CC": Decimal("1"),
+        # ACEITE*1000ML: 12 unidades por caja → (12 × 1000ml / 1000) = 12 kg por caja
+        "ACEITE*1000ML REF FRISOYA": Decimal("12"),
+        "ACEITE SOYA*1000CC LA ORLANDESA E": Decimal("12"),
+        "ACEITE SAN MIGUEL DE SOYA*1000CC": Decimal("12"),
 
-        # ACEITE*2000ML: 6 unidades = 12 kg → 2 kg/unidad
-        "ACEITE*2000ML REF FRISOYA": Decimal("2"),
+        # ACEITE*2000ML: 6 unidades por caja → (6 × 2000ml / 1000) = 12 kg por caja
+        "ACEITE*2000ML REF FRISOYA": Decimal("6"),
 
-        # ACEITE*3000ML: 1 caja = 18 kg (6 unidades) → 3 kg/unidad
-        "ACEITE*3000ML REF FRISOYA": Decimal("3"),
-        "ACEITE SOYA*3000CC LA ORLANDESA": Decimal("3"),
-        "ACEITE SAN MIGUEL DE SOYA*3000CC": Decimal("3"),
+        # ACEITE*3000ML: 6 unidades por caja → (6 × 3000ml / 1000) = 18 kg por caja
+        "ACEITE*3000ML REF FRISOYA": Decimal("6"),
+        "ACEITE SOYA*3000CC LA ORLANDESA": Decimal("6"),
+        "ACEITE SAN MIGUEL DE SOYA*3000CC": Decimal("6"),
 
-        # ACEITE*5000ML: 2 unidades = 6 kg → 3 kg/unidad
-        "ACEITE*5000ML REF FRISOYA": Decimal("3"),
-        "ACEITE SOYA*5000CC LA ORLANDESA E": Decimal("5"),
-        "ACEITE SAN MIGUEL DE SOYA*5000CC": Decimal("5"),
+        # ACEITE*5000ML: 2-3 unidades por caja
+        "ACEITE*5000ML REF FRISOYA": Decimal("2"),
+        "ACEITE SOYA*5000CC LA ORLANDESA E": Decimal("2"),
+        "ACEITE SAN MIGUEL DE SOYA*5000CC": Decimal("2"),
 
         # SEMILLAS
-        # SEMILLA GIRASOL x GRANEL: bulto = 20 kg
+        # SEMILLA GIRASOL x GRANEL: bulto = 20 kg (peso directo)
         "SEMILLA GIRASOL x GRANEL": Decimal("20"),
         "SEMILLA GIRASOL AGRANEL": Decimal("20"),
-        # SEMILLA GIRASOL*200G: 12 unidades = 2.4 kg → 0.2 kg/unidad
-        "SEMILLA GIRASOL*200G": Decimal("0.2"),
+        # SEMILLA GIRASOL*200G: 12 unidades por caja → (12 × 200g / 1000) = 2.4 kg por caja
+        "SEMILLA GIRASOL*200G": Decimal("12"),
 
         # HOJUELAS AZUCARADAS
-        # HOJUELAS AZUCARADAS*40G: 80 unidades = 3.2 kg → 0.04 kg/unidad
-        "HOJUELAS AZUCARADAS*40G": Decimal("0.04"),
+        # HOJUELAS AZUCARADAS*40G: 80 unidades por caja → (80 × 40g / 1000) = 3.2 kg por caja
+        "HOJUELAS AZUCARADAS*40G": Decimal("80"),
 
         # LECHE EN POLVO
-        # LECHE*380G: 12 unidades = 4.56 kg → 0.38 kg/unidad
-        "LECHE EN POLVO*380G ENTERA DONA VACA": Decimal("0.38"),
-        "LECHE EN POLVO*380GR ENTERA NUTRALAC": Decimal("0.38"),
-        "LECHE EN POLVO*380GR ENTERA DONA VACA": Decimal("0.38"),
-        # LECHE*900G: usar extracción automática (0.9 kg)
-        "LECHE EN POLVO*900GR ENTERA NUTRALAC": Decimal("0.9"),
-        "LECHE EN POLVO*900GR ENTERA DONA VACA": Decimal("0.9"),
-        "LECHE EN POLVO*900G ENTERA DONA VACA": Decimal("0.9"),
+        # LECHE*380G: 12 unidades por caja → (12 × 380g / 1000) = 4.56 kg por caja
+        "LECHE EN POLVO*380G ENTERA DONA VACA": Decimal("12"),
+        "LECHE EN POLVO*380GR ENTERA NUTRALAC": Decimal("12"),
+        "LECHE EN POLVO*380GR ENTERA DONA VACA": Decimal("12"),
+        # LECHE*900G: 12 unidades por caja → (12 × 900g / 1000) = 10.8 kg por caja
+        "LECHE EN POLVO*900GR ENTERA NUTRALAC": Decimal("12"),
+        "LECHE EN POLVO*900GR ENTERA DONA VACA": Decimal("12"),
+        "LECHE EN POLVO*900G ENTERA DONA VACA": Decimal("12"),
 
         # AZUCAR
-        # AZUCAR BLANCO*1KG: paca = 25 kg (25 unidades × 1 kg)
-        "AZUCAR BLANCO*1KG PROVIDENCIA": Decimal("1"),
+        # AZUCAR BLANCO*1KG: 25 unidades por paca → (25 × 1kg / 1) = 25 kg por paca
+        "AZUCAR BLANCO*1KG PROVIDENCIA": Decimal("25"),
 
         # PANELA
-        # PANELA*125G*8UND TEJO: usar extracción automática (0.125 kg × 8 = 1 kg por paquete)
-        "PANELA*125G*8UND TEJO": Decimal("1"),
-        "PANELA TEJO/8UND*125GR": Decimal("1"),
+        # PANELA*125G*8UND TEJO: 24 paquetes por caja, cada paquete = 1kg → 24 kg por caja
+        "PANELA*125G*8UND TEJO": Decimal("24"),
+        "PANELA TEJO/8UND*125GR": Decimal("24"),
+
+        # FRIJOLES empacados (código 50025 indica Presentacion = 25)
+        "FRIJOL CALIMA*500G": Decimal("25"),
+        "FRIJOL CALIMA 500G": Decimal("25"),
 
         # Productos especiales sin gramos/volumen (mantener como unidades)
         "GALLETAS CRAKENAS CLUB IND 8*10": Decimal("1"),
@@ -232,7 +238,11 @@ class ProcessPaisanoInvoices:
     def _extract_grams_from_name(self, product_name: str) -> int:
         """
         Extract grams from product name
-        Examples: 'HARINA*500G' -> 500, 'FRIJOL*250G' -> 250, 'PANELA*500GR' -> 500
+        Examples:
+        - 'HARINA*500G' -> 500
+        - 'FRIJOL*250G' -> 250
+        - 'PANELA*500GR' -> 500
+        - 'PANELA*125G*8UND' -> 1000 (125g × 8 units)
         Returns 0 if no grams found
         """
         import re
@@ -246,6 +256,13 @@ class ProcessPaisanoInvoices:
         if match_kg:
             return int(match_kg.group(1)) * 1000
 
+        # Look for patterns like "125G*8UND" or "125GR*8UND" (grams × units)
+        match_multi = re.search(r'(\d+)\s*(?:G|GR|GRAMOS)\s*\*\s*(\d+)\s*UND', name_upper)
+        if match_multi:
+            grams = int(match_multi.group(1))
+            units = int(match_multi.group(2))
+            return grams * units
+
         # Look for G/GR/GRAMOS patterns (500G, 250GR, etc.)
         match = re.search(r'(\d+)\s*(?:G|GR|GRAMOS)\b', name_upper)
         if match:
@@ -255,8 +272,11 @@ class ProcessPaisanoInvoices:
 
     def _extract_volume_cc_from_name(self, product_name: str) -> int:
         """
-        Extract volume in CC from product name
-        Examples: 'ACEITE*500CC' -> 500, 'ACEITE*3000CC' -> 3000
+        Extract volume in CC/ML from product name
+        Examples:
+        - 'ACEITE*500CC' -> 500
+        - 'ACEITE*500ML' -> 500
+        - 'ACEITE*3000CC' -> 3000
         Returns 0 if no volume found
         """
         import re
@@ -264,8 +284,8 @@ class ProcessPaisanoInvoices:
             return 0
 
         name_upper = product_name.upper()
-        # Look for patterns like 500CC, 1000CC, etc.
-        match = re.search(r'(\d+)\s*CC\b', name_upper)
+        # Look for patterns like 500CC, 500ML, 1000CC, 1000ML, etc.
+        match = re.search(r'(\d+)\s*(?:CC|ML)\b', name_upper)
         if match:
             return int(match.group(1))
 
@@ -307,14 +327,14 @@ class ProcessPaisanoInvoices:
         Formula: factor = (Presentacion × gramos / 1000)
 
         Where:
-        - Presentacion: units per box/bulk (from catalog or default)
-        - gramos: extracted from product name (500G, 250G, etc.)
+        - Presentacion: units per box/bulk (from catalog or default = 1)
+        - gramos: extracted from product name (500G, 250G, 1000ML, etc.)
 
         Priority:
-        1. FIRST: Check catalog for Presentacion (units per bulk)
-        2. If not in catalog: Use default Presentacion = 1
-        3. Extract grams from name (500G, 250G, KG, CC)
-        4. Calculate: (Presentacion × gramos / 1000) = kg per unit invoiced
+        1. Check catalog for Presentacion (units per box/bulk or kg per bulto for A GRANEL)
+        2. If product is A GRANEL: return Presentacion directly (already in kg)
+        3. If product is NOT A GRANEL: extract grams/volume from name
+        4. Calculate: (Presentacion × gramos / 1000) = kg per box/caja
 
         Returns:
             Decimal: conversion factor in kg per unit (to multiply by invoice quantity)
@@ -322,41 +342,52 @@ class ProcessPaisanoInvoices:
         if not product_name:
             return Decimal("1")
 
-        # Step 1: Get Presentacion from catalog (units per bulk)
+        # Step 1: Get Presentacion from catalog (units per box/bulk or kg for A GRANEL)
         normalized_tokens = self._normalize_tokens(product_name)
-        catalog_factor = self._match_factor(normalized_tokens)
+        presentacion = self._match_factor(normalized_tokens)
 
-        # If found in catalog, use that factor (even if it's 1)
-        if catalog_factor is not None:
-            return catalog_factor
+        # Check if product is A GRANEL
+        name_upper = product_name.upper()
+        is_a_granel = "AGRANEL" in name_upper.replace(" ", "") or "A GRANEL" in name_upper
 
-        # Step 2: Extract grams from product name
+        # Step 2: If A GRANEL, return Presentacion directly (already in kg)
+        if is_a_granel:
+            if presentacion is not None:
+                return presentacion  # Already in kg (e.g., 50 kg per bulto)
+            else:
+                # Default for unknown A GRANEL products
+                return Decimal("50")
+
+        # Step 3: Extract grams or volume from product name
         grams = self._extract_grams_from_name(product_name)
 
-        # If no grams found, try volume in CC for liquids
+        # If no grams found, try volume in CC/ML for liquids
         if grams == 0:
             volume_cc = self._extract_volume_cc_from_name(product_name)
             if volume_cc > 0:
-                # For liquids: assume density ≈ 0.92 g/ml
-                # So 500CC ≈ 460g
-                grams = int(volume_cc * 0.92)
+                # For liquids: assume density = 1.0 kg/liter (simplified)
+                # So 500CC = 500ml = 500g
+                grams = volume_cc
 
-        # Step 3: Calculate conversion factor
-        # Formula: (Presentacion × gramos / 1000) = kg per invoiced unit
+        # Step 4: Calculate conversion factor
+        # Formula: (Presentacion × gramos / 1000) = kg per box/caja
         if grams > 0:
-            # Convert grams to kg: 500G -> 0.5 kg per unit
-            return Decimal(str(grams)) / Decimal("1000")
+            if presentacion is not None:
+                # Use catalog Presentacion
+                # Example: FRIJOL CALIMA*500G with Presentacion=25
+                # → (25 × 500 / 1000) = 12.5 kg per caja
+                return (presentacion * Decimal(str(grams))) / Decimal("1000")
+            else:
+                # No catalog entry, assume Presentacion = 1 (individual units)
+                # Example: "PRODUCTO NUEVO*500G" → (1 × 500 / 1000) = 0.5 kg per unit
+                return Decimal(str(grams)) / Decimal("1000")
 
-        # PRIORITY 3: Try to extract volume in CC for liquids
-        volume_cc = self._extract_volume_cc_from_name(product_name)
-        if volume_cc > 0:
-            # For oil: using density = 1.0 kg/litro for simplification
-            # 500CC = 0.5 litros = 0.5 kg, 1000CC = 1 litro = 1 kg
-            density = Decimal("1.0")
-            kg_per_unit = (Decimal(str(volume_cc)) / Decimal("1000")) * density
-            return kg_per_unit
+        # No conversion info found
+        # If in catalog with no grams (special products), use catalog value
+        if presentacion is not None:
+            return presentacion
 
-        # No conversion info found, return 1 (keep as units)
+        # Otherwise, keep as units
         return Decimal("1")
 
     def _match_factor(self, tokens: List[str]):
