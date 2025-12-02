@@ -103,14 +103,14 @@ class MainController:
 
     def process_paisano_invoices(
         self,
-        xml_paths: List[str],
+        file_paths: List[str],
         progress_callback: Optional[Callable[[int, int], None]] = None
     ) -> Tuple[bool, str, int]:
         """
-        Process El Paisano XML invoices (folders or XML files)
+        Process El Paisano invoices from XML or PDF (folders or files)
         """
         return self.process_paisano_invoices_use_case.execute(
-            xml_paths=xml_paths,
+            input_paths=file_paths,
             username=self.current_user.username,
             progress_callback=progress_callback
         )

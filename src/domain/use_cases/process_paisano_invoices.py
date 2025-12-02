@@ -1,22 +1,23 @@
 """
 Process El Paisano Invoices Use Case
-Parses XML invoices from folders and exports to Reggis CSV
+Parses XML/PDF invoices from folders and exports to Reggis CSV
 """
 from typing import List, Callable, Optional
 from decimal import Decimal
 from datetime import datetime
 from pathlib import Path
 import unicodedata
+
 from ..entities.invoice import Invoice
 from ..entities.report import Report
 from ..repositories.report_repository import ReportRepositoryInterface
 
 
 class ProcessPaisanoInvoices:
-    """Use case for processing El Paisano invoices from XML folders"""
+    """Use case for processing El Paisano invoices from XML/PDF files"""
 
     # Conversion map: Product name -> Kilos per unit
-    # Formula: kilos_totales = Factor × Cantidad_Factura
+    # Formula: kilos_totales = Factor * Cantidad_Factura
     #
     # Estos valores representan los kilos totales por unidad/paca/caja/bulto
     # y se multiplican directamente por la cantidad de la factura
@@ -25,7 +26,7 @@ class ProcessPaisanoInvoices:
         "ACEITE SOYA*500CC SAN MIGUEL EX": Decimal("12.0"),
         "ACEITE*1000ML REF FRISOYA": Decimal("12.0"),
         "ACEITE*2000ML REF FRISOYA": Decimal("12.0"),
-        "ACEITE*3000ML REF FRISOYA": Decimal("18.0"),
+        "ACEITE*3000ML REF FRISOYA": Decimal("6.0"),
         "ACEITE*500ML REF FRISOYA": Decimal("12.0"),
         "ALPISTE A GRANEL": Decimal("50.0"),
         "ALPISTE*250G": Decimal("6.25"),
@@ -35,32 +36,33 @@ class ProcessPaisanoInvoices:
         "ARROZ*500G": Decimal("12.5"),
         "ARVEJA VERDE*400G": Decimal("10.0"),
         "ARVEJA VERDE*450G": Decimal("11.25"),
-        "ARVEJA VERDE*500G": Decimal("12.5"),
+        "ARVEJA VERDE*500G": Decimal("6.0"),
         "AZUCAR BLANCO*1KG PROVIDENCIA": Decimal("25.0"),
         "AZUCAR BLANCO*500G PROVIDENCIA": Decimal("12.5"),
         "BLANQUILLO*250G FRIJOL": Decimal("6.25"),
         "BLANQUILLO*400G FRIJOL": Decimal("10.0"),
         "BLANQUILLO*450G FRIJOL": Decimal("11.25"),
-        "BLANQUILLO*500G FRIJOL": Decimal("12.5"),
-        "CEBADA PERLADA A GRANEL CON IVA": Decimal("25.0"),
+        "BLANQUILLO*500G FRIJOL": Decimal("6.0"),
+        "CEBADA PERLADA A GRANEL CON IVA": Decimal("12.5"),
         "CUCHUCO*450G FINO": Decimal("11.25"),
         "CUCHUCO*450G GRUESO VALLE": Decimal("11.25"),
         "FRIJOL BOLON*250G": Decimal("6.25"),
-        "FRIJOL BOLON*500G": Decimal("12.5"),
+        "FRIJOL BOLON*500G": Decimal("6.0"),
         "FRIJOL CALIMA*250G": Decimal("6.25"),
         "FRIJOL CALIMA*400G": Decimal("10.0"),
         "FRIJOL CALIMA*450G": Decimal("11.25"),
-        "FRIJOL CALIMA*500G": Decimal("12.5"),
+        "FRIJOL CALIMA*500G": Decimal("7.5"),
         "FRIJOL CARAOTA*250G": Decimal("6.25"),
         "FRIJOL CARAOTA*450G": Decimal("11.25"),
-        "FRIJOL CARAOTA*500G": Decimal("12.5"),
+        "FRIJOL CARAOTA*500G": Decimal("6.0"),
         "FRIJOL CARG/TO*250G": Decimal("6.25"),
         "FRIJOL CARG/TO*450G": Decimal("11.25"),
-        "FRIJOL CARG/TO*500G": Decimal("12.5"),
+        "FRIJOL CARG/TO*500G": Decimal("6.0"),
         "GARBANZO*450G": Decimal("11.25"),
-        "GARBANZO*500G": Decimal("12.5"),
+        "GARBANZO*500G": Decimal("6.0"),
+        "HARINA AREPA*500G BCA P/24 LL/27": Decimal("13.5"),
         "HOJUELAS AZUCARADAS*40G": Decimal("3.2"),
-        "LECHE EN POLVO*380G ENTERA DONA VACA": Decimal("11.4"),
+        "LECHE EN POLVO*380G ENTERA DONA VACA": Decimal("4.56"),
         "LENTEJA*250G": Decimal("6.25"),
         "LENTEJA*400G": Decimal("10.0"),
         "LENTEJA*450G": Decimal("11.25"),
@@ -74,8 +76,8 @@ class ProcessPaisanoInvoices:
         "PANELA*125G*8UND TEJO": Decimal("24.0"),
         "PANELA*500G CUADRADA": Decimal("24.0"),
         "SEMILLA GIRASOL A GRANEL": Decimal("20.0"),
-        "SEMILLA GIRASOL*200G": Decimal("5.0"),
-        "SERVILLETA BCA NUBE*300UND": Decimal("2.63"),
+        "SEMILLA GIRASOL*200G": Decimal("2.4"),
+        "SERVILLETA BCA NUBE*300UND": Decimal("2.11"),
         "TOALLA COCINA BCO NUBE": Decimal("6.0"),
     }
 
@@ -84,61 +86,59 @@ class ProcessPaisanoInvoices:
         report_repository: ReportRepositoryInterface,
         xml_parser,  # XMLInvoiceParser
         reggis_exporter,  # JCRReggisExporter (Reggis CSV exporter)
-        conversion_repository=None  # PaisanoConversionRepository
+        conversion_repository=None,  # PaisanoConversionRepository
+        pdf_parser=None  # PaisanoPDFParser
     ):
         self.report_repository = report_repository
         self.xml_parser = xml_parser
         self.reggis_exporter = reggis_exporter
         self.conversion_repository = conversion_repository
+        self.pdf_parser = pdf_parser
         self._reload_catalog()
 
     def execute(
         self,
-        xml_paths: List[str],
+        input_paths: List[str],
         username: str,
         progress_callback: Optional[Callable[[int, int], None]] = None
     ) -> tuple[bool, str, int]:
         """
-        Process XML invoices (folders or individual XML files) and export to Reggis CSV
+        Process XML/PDF invoices (folders or individual files) and export to Reggis CSV
 
         Args:
-            xml_paths: List of folder paths or XML file paths
+            input_paths: List of folder paths or XML/PDF file paths
             username: Username of the person processing
             progress_callback: Optional callback for progress updates (current, total)
 
         Returns:
             Tuple of (success, message, records_processed)
         """
-        if not xml_paths:
-            return False, "No se seleccionaron archivos o carpetas XML", 0
+        if not input_paths:
+            return False, "No se seleccionaron archivos o carpetas", 0
 
         all_invoices: List[Invoice] = []
-        total_items = len(xml_paths)
+        files_to_process = self._expand_input_paths(input_paths)
+        total_items = len(files_to_process)
+
+        if not total_items:
+            return False, "No se encontraron archivos XML o PDF", 0
 
         # Reload catalog each run to pick up new conversions
         self._reload_catalog()
 
-        for idx, path in enumerate(xml_paths):
+        for idx, path in enumerate(files_to_process):
             if progress_callback:
                 progress_callback(idx, total_items)
 
             try:
-                p = Path(path)
-                if p.is_dir():
-                    invoices = self.xml_parser.parse_directory(str(p))
-                elif p.is_file() and p.suffix.lower() == ".xml":
-                    invoice = self.xml_parser.parse_xml_file(str(p))
-                    invoices = [invoice] if invoice else []
-                else:
-                    invoices = []
-
+                invoices = self._parse_input_path(path)
                 all_invoices.extend(invoices)
             except Exception as exc:
                 print(f"Error processing {path}: {exc}")
                 continue
 
         if not all_invoices:
-            return False, "No se encontraron facturas válidas en los archivos", 0
+            return False, "No se encontraron facturas validas en los archivos", 0
 
         try:
             # Apply conversion factors to kilos and recompute unit price
@@ -150,15 +150,15 @@ class ProcessPaisanoInvoices:
                     original_qty = product.quantity
                     product.original_quantity = original_qty
 
-                    # Get conversion factor from catalog
-                    factor = self._get_conversion_factor(product.name)
+                    # Get conversion factor (catalog first, then heuristics)
+                    factor = self._calculate_conversion_factor(product.name)
                     if factor == Decimal("1"):
                         missing_products += 1
 
                     # Force underlying code
                     product.underlying_code = "SPN-1"
 
-                    # Convert quantity to kg: kilos_totales = Factor × Cantidad_Factura
+                    # Convert quantity to kg: kilos_totales = Factor * Cantidad_Factura
                     converted_qty = original_qty * factor
                     product.quantity = converted_qty
                     product.unit_of_measure = "Kg" if factor != Decimal("1") else "Un"
@@ -178,24 +178,20 @@ class ProcessPaisanoInvoices:
                 original_quantities=original_quantities,
                 company="EL PAISANO"
             )
-            message = f"Datos exportados exitosamente al formato Reggis:\n{output_file}"
+            message = f"Datos exportados exitosamente al formato Reggis:\\n{output_file}"
             if missing_products:
-                message += f"\nAdvertencia: {missing_products} productos sin factor de conversión (usado 1:1)."
+                message += f"\\nAdvertencia: {missing_products} productos sin factor de conversion (usado 1:1)."
         except Exception as exc:
             return False, f"Error al exportar datos: {exc}", 0
 
         total_records = sum(invoice.get_product_count() for invoice in all_invoices)
-        total_size = sum(
-            Path(p).stat().st_size
-            for p in xml_paths
-            if Path(p).exists()
-        )
+        total_size = sum(Path(p).stat().st_size for p in files_to_process if Path(p).exists())
 
         report = Report(
             id=None,
             username=username,
             company="EL PAISANO",
-            filename=", ".join([Path(f).name for f in xml_paths]),
+            filename=", ".join([Path(f).name for f in input_paths]),
             records_processed=total_records,
             created_at=datetime.now(),
             file_size=total_size
@@ -237,9 +233,9 @@ class ProcessPaisanoInvoices:
         # Normalize measurement units BEFORE tokenization
         # Convert common variations to standard forms
         # GR/GRAMOS -> G, ML -> CC, KILO/KILOS -> KG
-        cleaned = re.sub(r'(\d+)\s*(?:GR|GRAMOS)\b', r'\1G', cleaned)
-        cleaned = re.sub(r'(\d+)\s*ML\b', r'\1CC', cleaned)
-        cleaned = re.sub(r'(\d+)\s*(?:KILO|KILOS)\b', r'\1KG', cleaned)
+        cleaned = re.sub(r'(\\d+)\\s*(?:GR|GRAMOS)\\b', r'\\1G', cleaned)
+        cleaned = re.sub(r'(\\d+)\\s*ML\\b', r'\\1CC', cleaned)
+        cleaned = re.sub(r'(\\d+)\\s*(?:KILO|KILOS)\\b', r'\\1KG', cleaned)
 
         tokens = cleaned.split()
         # Remove common stopwords
@@ -284,7 +280,7 @@ class ProcessPaisanoInvoices:
 
         for token in tokens:
             # Check if it's a measurement (contains numbers + units)
-            if re.search(r'\d+', token):
+            if re.search(r'\\d+', token):
                 # Has numbers - likely a measurement
                 measurements.append(token)
             elif token in product_categories:
@@ -301,24 +297,45 @@ class ProcessPaisanoInvoices:
             "modifiers": modifiers
         }
 
-    def _get_conversion_factor(self, product_name: str) -> Decimal:
+    def _calculate_conversion_factor(self, product_name: str) -> Decimal:
+        """
+        Calculate conversion factor with multiple strategies:
+        1. Catalog/fuzzy match (preferred)
+        2. Extract grams from name (e.g., 500G, 1KG)
+        3. Extract volume in CC/ML (uses oil density 0.92)
+        4. Bulk products (AGRANEL) default to 50kg
+        """
+        # Try catalog (returns None if no match)
+        catalog_factor = self._get_conversion_factor(product_name)
+        if catalog_factor is not None:
+            return catalog_factor
+
+        grams = self._extract_grams_from_name(product_name)
+        if grams:
+            return grams / Decimal("1000")
+
+        volume_cc = self._extract_volume_cc_from_name(product_name)
+        if volume_cc:
+            density = Decimal("0.92")  # Oil density approximation
+            return (volume_cc / Decimal("1000")) * density
+
+        if self._is_bulk_product(product_name):
+            return Decimal("50.0")
+
+        return Decimal("1")
+
+    def _get_conversion_factor(self, product_name: str) -> Optional[Decimal]:
         """
         Get conversion factor from catalog using fuzzy matching.
 
-        Formula: kilos_totales = Factor × Cantidad_Factura
-
         Returns:
-            Decimal: conversion factor in kg per unit
+            Decimal if found, otherwise None
         """
         if not product_name:
-            return Decimal("1")
+            return None
 
-        # Normalize product name and try to match
         normalized_tokens = self._normalize_tokens(product_name)
-        factor = self._match_factor(normalized_tokens)
-
-        # Return matched factor or default to 1 (no conversion)
-        return factor if factor is not None else Decimal("1")
+        return self._match_factor(normalized_tokens)
 
     def _match_factor(self, tokens: List[str]):
         """
@@ -369,8 +386,8 @@ class ProcessPaisanoInvoices:
             core_score = len(core_overlap) / min(len(input_core), len(cat_core)) if input_core and cat_core else 0
 
             # Measurement score with TWO modes:
-            # Mode 1: Both have measurements → strict match (prefer exact size matches)
-            # Mode 2: Catalog has no measurements → flexible match (category-level)
+            # Mode 1: Both have measurements -> strict match (prefer exact size matches)
+            # Mode 2: Catalog has no measurements -> flexible match (category-level)
             if input_measurements and cat_measurements:
                 # Both have measurements - check if they match
                 measurement_overlap = input_measurements.intersection(cat_measurements)
@@ -429,3 +446,82 @@ class ProcessPaisanoInvoices:
 
         # Require good match (70%+) - maintains precision while handling variations
         return best_factor if best_score >= 0.70 else None
+
+    def _extract_grams_from_name(self, name: str) -> Optional[Decimal]:
+        """Extract grams or kilos from product name"""
+        import re
+        if not name:
+            return None
+        match = re.search(r'(\d+(?:[.,]\d+)?)\s*(G|GR|GRAMOS)\b', name, re.IGNORECASE)
+        if match:
+            value = match.group(1).replace('.', '').replace(',', '.')
+            try:
+                return Decimal(value)
+            except Exception:
+                return None
+
+        match = re.search(r'(\d+(?:[.,]\d+)?)\s*(KG|KILO|KILOS)\b', name, re.IGNORECASE)
+        if match:
+            value = match.group(1).replace('.', '').replace(',', '.')
+            try:
+                return Decimal(value) * Decimal("1000")
+            except Exception:
+                return None
+        return None
+
+    def _extract_volume_cc_from_name(self, name: str) -> Optional[Decimal]:
+        """Extract volume in CC/ML from product name"""
+        import re
+        if not name:
+            return None
+        match = re.search(r'(\d+(?:[.,]\d+)?)\s*(CC|ML)\b', name, re.IGNORECASE)
+        if not match:
+            return None
+        value = match.group(1).replace('.', '').replace(',', '.')
+        try:
+            return Decimal(value)
+        except Exception:
+            return None
+
+    def _is_bulk_product(self, name: str) -> bool:
+        """Identify bulk/granel products"""
+        if not name:
+            return False
+        normalized = name.upper()
+        return "AGRANEL" in normalized or "A GRANEL" in normalized or "GRANEL" in normalized
+
+    def _expand_input_paths(self, paths: List[str]) -> List[Path]:
+        """Return a flat list of XML/PDF files from provided paths"""
+        collected: List[Path] = []
+        for raw_path in paths:
+            p = Path(raw_path)
+            if p.is_dir():
+                collected.extend(
+                    sorted(
+                        f
+                        for f in p.rglob("*")
+                        if f.is_file() and f.suffix.lower() in {".xml", ".pdf"}
+                    )
+                )
+            elif p.is_file() and p.suffix.lower() in {".xml", ".pdf"}:
+                collected.append(p)
+        return collected
+
+    def _parse_input_path(self, path: Path) -> List[Invoice]:
+        """Parse a single XML or PDF path into invoices"""
+        if not path.exists() or not path.is_file():
+            return []
+
+        suffix = path.suffix.lower()
+        if suffix == ".xml":
+            invoice = self.xml_parser.parse_xml_file(str(path))
+            return [invoice] if invoice else []
+
+        if suffix == ".pdf":
+            if not self.pdf_parser:
+                print(f"No hay parser PDF configurado para {path}")
+                return []
+            invoice = self.pdf_parser.parse_pdf_file(str(path))
+            return [invoice] if invoice else []
+
+        return []

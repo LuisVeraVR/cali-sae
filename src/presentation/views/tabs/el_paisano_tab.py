@@ -1,6 +1,6 @@
 
 """
-El Paisano Tab - Procesa carpeta con XML y exporta a Reggis
+El Paisano Tab - Procesa carpetas con XML/PDF y exporta a Reggis
 """
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -20,14 +20,14 @@ class PaisanoProcessingThread(QThread):
     progress_update = pyqtSignal(int, int)
     finished = pyqtSignal(bool, str, int)
 
-    def __init__(self, controller, xml_paths: List[str]):
+    def __init__(self, controller, file_paths: List[str]):
         super().__init__()
         self.controller = controller
-        self.xml_paths = xml_paths
+        self.file_paths = file_paths
 
     def run(self):
         success, message, records = self.controller.process_paisano_invoices(
-            xml_paths=self.xml_paths,
+            file_paths=self.file_paths,
             progress_callback=self.progress_update.emit
         )
         self.finished.emit(success, message, records)
@@ -39,7 +39,7 @@ class ElPaisanoTab(QWidget):
     def __init__(self, main_controller):
         super().__init__()
         self.main_controller = main_controller
-        self.xml_paths: List[str] = []
+        self.file_paths: List[str] = []
         self.processing_thread: Optional[PaisanoProcessingThread] = None
         self.init_ui()
 
@@ -65,7 +65,7 @@ class ElPaisanoTab(QWidget):
         title.setStyleSheet("color: #e67e22;")
         layout.addWidget(title)
 
-        subtitle = QLabel("Procesar XML y exportar a plantilla Reggis")
+        subtitle = QLabel("Procesar XML/PDF y exportar a plantilla Reggis")
         subtitle.setFont(QFont("Arial", 11))
         subtitle.setStyleSheet("color: #7f8c8d;")
         layout.addWidget(subtitle)
@@ -123,7 +123,7 @@ class ElPaisanoTab(QWidget):
         layout.setSpacing(10)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        label = QLabel("Carpetas o archivos XML:")
+        label = QLabel("Carpetas o archivos XML/PDF:")
         label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(label)
 
@@ -134,7 +134,7 @@ class ElPaisanoTab(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
 
-        add_btn = QPushButton("Agregar carpeta/XML")
+        add_btn = QPushButton("Agregar carpeta/XML/PDF")
         add_btn.setStyleSheet(self._get_button_style("#e67e22"))
         add_btn.clicked.connect(self.add_xml_paths)
         btn_layout.addWidget(add_btn)
@@ -185,26 +185,26 @@ class ElPaisanoTab(QWidget):
     def add_xml_paths(self):
         folder = QFileDialog.getExistingDirectory(
             self,
-            "Seleccionar carpeta con XML",
+            "Seleccionar carpeta con XML o PDF",
             ""
         )
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Seleccionar archivos XML (opcional)",
+            "Seleccionar archivos XML/PDF (opcional)",
             "",
-            "XML Files (*.xml)"
+            "XML/PDF Files (*.xml *.pdf);;Todos los archivos (*.*)"
         )
 
         added = False
         if folder:
-            if folder not in self.xml_paths:
-                self.xml_paths.append(folder)
+            if folder not in self.file_paths:
+                self.file_paths.append(folder)
                 self.xml_list.addItem(f"Carpeta: {folder}")
                 added = True
         if files:
             for f in files:
-                if f not in self.xml_paths:
-                    self.xml_paths.append(f)
+                if f not in self.file_paths:
+                    self.file_paths.append(f)
                     self.xml_list.addItem(f"Archivo: {f}")
                     added = True
 
@@ -212,21 +212,21 @@ class ElPaisanoTab(QWidget):
             QMessageBox.information(self, "Sin cambios", "No se agregaron nuevas rutas.")
 
     def clear_xml_paths(self):
-        self.xml_paths.clear()
+        self.file_paths.clear()
         self.xml_list.clear()
 
     def process_invoices(self):
-        if not self.xml_paths:
-            QMessageBox.warning(self, "Error", "Seleccione al menos una carpeta o archivo XML")
+        if not self.file_paths:
+            QMessageBox.warning(self, "Error", "Seleccione al menos una carpeta o archivo XML o PDF")
             return
 
         self.setEnabled(False)
         self.progress_bar.setValue(0)
-        self.status_label.setText("Procesando XML y exportando a Reggis...")
+        self.status_label.setText("Procesando archivos y exportando a Reggis...")
 
         self.processing_thread = PaisanoProcessingThread(
             self.main_controller,
-            self.xml_paths
+            self.file_paths
         )
         self.processing_thread.progress_update.connect(self._on_progress_update)
         self.processing_thread.finished.connect(self._on_processing_finished)
