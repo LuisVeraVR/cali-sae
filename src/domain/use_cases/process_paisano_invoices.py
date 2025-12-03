@@ -43,7 +43,7 @@ class ProcessPaisanoInvoices:
         "BLANQUILLO*400G FRIJOL": Decimal("10.0"),
         "BLANQUILLO*450G FRIJOL": Decimal("11.25"),
         "BLANQUILLO*500G FRIJOL": Decimal("6.0"),
-        "CEBADA PERLADA A GRANEL CON IVA": Decimal("12.5"),
+        # "CEBADA PERLADA A GRANEL CON IVA" - Removido: usa detección automática A GRANEL (50 kg)
         "CUCHUCO*450G FINO": Decimal("11.25"),
         "CUCHUCO*450G GRUESO VALLE": Decimal("11.25"),
         "FRIJOL BOLON*250G": Decimal("6.25"),
