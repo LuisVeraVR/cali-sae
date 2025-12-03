@@ -243,6 +243,7 @@ class PaisanoPDFParser:
             unit_price=unit_price,
             total_price=total_price if total_price != 0 else unit_price * (quantity or Decimal("1")),
             iva_percentage=iva,
+            original_unit_code="Un",  # Paisano PDFs typically use "Un" (units)
         )
 
     def _parse_lines_from_text(self, text: str) -> List[Product]:
@@ -278,6 +279,7 @@ class PaisanoPDFParser:
                     unit_price=unit_price if unit_price != 0 else (total_price / quantity if quantity else Decimal("0")),
                     total_price=total_price if total_price != 0 else unit_price * quantity,
                     iva_percentage=Decimal("0"),
+                    original_unit_code="Un",  # Paisano PDFs typically use "Un" (units)
                 )
             )
 
