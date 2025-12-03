@@ -252,6 +252,8 @@ class XMLInvoiceParser:
             unit_code = (
                 unit_element.get("unitCode", "") if unit_element is not None else ""
             )
+            # Guardar el código original para la columna "Unidad Original"
+            original_unit_code = unit_code
             unit_of_measure = self._convert_unit_code(unit_code)
 
             # Quantity
@@ -301,6 +303,7 @@ class XMLInvoiceParser:
                 unit_price=unit_price,
                 total_price=total_price,
                 iva_percentage=iva_percentage,
+                original_unit_code=original_unit_code,
             )
 
         except Exception as e:

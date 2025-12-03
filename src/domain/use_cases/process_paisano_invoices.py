@@ -43,7 +43,7 @@ class ProcessPaisanoInvoices:
         "BLANQUILLO*400G FRIJOL": Decimal("10.0"),
         "BLANQUILLO*450G FRIJOL": Decimal("11.25"),
         "BLANQUILLO*500G FRIJOL": Decimal("6.0"),
-        "CEBADA PERLADA A GRANEL CON IVA": Decimal("12.5"),
+        # "CEBADA PERLADA A GRANEL CON IVA" - Removido: usa detección automática A GRANEL (50 kg)
         "CUCHUCO*450G FINO": Decimal("11.25"),
         "CUCHUCO*450G GRUESO VALLE": Decimal("11.25"),
         "FRIJOL BOLON*250G": Decimal("6.25"),
@@ -151,7 +151,11 @@ class ProcessPaisanoInvoices:
                     product.original_quantity = original_qty
 
                     # Get conversion factor (catalog first, then heuristics)
-                    factor = self._calculate_conversion_factor(product.name)
+                    # NUEVO: Ajustar factor según la unidad original (UND, P25, CJ, etc.)
+                    factor = self._calculate_conversion_factor_with_unit(
+                        product.name,
+                        product.original_unit_code or product.unit_of_measure
+                    )
                     if factor == Decimal("1"):
                         missing_products += 1
 
@@ -296,6 +300,73 @@ class ProcessPaisanoInvoices:
             "measurements": measurements,
             "modifiers": modifiers
         }
+
+    def _calculate_conversion_factor_with_unit(self, product_name: str, unit_code: str) -> Decimal:
+        """
+        Calculate conversion factor considering both product name AND unit code.
+
+        Unit codes:
+        - UND: Unidad (usa factor del catálogo)
+        - P25, P20, P12: Pacas (calcula: num_paca × gramos ÷ 1000)
+        - CJ, CAJ: Cajas (usa factor del catálogo)
+        - Kg: Kilos (ya está en kilos, factor 1.0)
+
+        Examples:
+        - FRIJOL CALIMA*500G con UND: factor del catálogo (7.5 kg)
+        - FRIJOL CALIMA*500G con P25: (25 × 500 ÷ 1000) = 12.5 kg
+        """
+        if not unit_code:
+            return self._calculate_conversion_factor(product_name)
+
+        unit_upper = unit_code.upper().strip()
+
+        # Si ya viene en kilos, no convertir
+        if unit_upper in ["KG", "KGM"]:
+            return Decimal("1.0")
+
+        # Detectar pacas (P25, P20, P12, etc.)
+        import re
+        paca_match = re.match(r'P(\d+)', unit_upper)
+        if paca_match:
+            paca_count = int(paca_match.group(1))
+            # Extraer gramos del nombre del producto
+            grams = self._extract_grams_from_name(product_name)
+            if grams:
+                # Formula: (paca_count × gramos ÷ 1000)
+                factor = (Decimal(str(paca_count)) * grams) / Decimal("1000")
+                print(f"[CONVERSION] {product_name} con {unit_code}: P{paca_count} × {grams}g ÷ 1000 = {factor} kg")
+                return factor
+            # Si no hay gramos en el nombre, usar volumen (CC/ML)
+            volume_cc = self._extract_volume_cc_from_name(product_name)
+            if volume_cc:
+                # Formula: (paca_count × volumen_cc ÷ 1000)
+                factor = (Decimal(str(paca_count)) * volume_cc) / Decimal("1000")
+                print(f"[CONVERSION] {product_name} con {unit_code}: P{paca_count} × {volume_cc}cc ÷ 1000 = {factor} kg")
+                return factor
+
+        # Detectar cajas con número (CJ12, CJ24, etc.)
+        caja_match = re.match(r'(?:CJ|CAJ)(\d+)', unit_upper)
+        if caja_match:
+            caja_count = int(caja_match.group(1))
+            # Extraer gramos del nombre del producto
+            grams = self._extract_grams_from_name(product_name)
+            if grams:
+                # Formula: (caja_count × gramos ÷ 1000)
+                factor = (Decimal(str(caja_count)) * grams) / Decimal("1000")
+                print(f"[CONVERSION] {product_name} con {unit_code}: CJ{caja_count} × {grams}g ÷ 1000 = {factor} kg")
+                return factor
+            # Si no hay gramos en el nombre, usar volumen (CC/ML)
+            volume_cc = self._extract_volume_cc_from_name(product_name)
+            if volume_cc:
+                # Formula: (caja_count × volumen_cc ÷ 1000)
+                factor = (Decimal(str(caja_count)) * volume_cc) / Decimal("1000")
+                print(f"[CONVERSION] {product_name} con {unit_code}: CJ{caja_count} × {volume_cc}cc ÷ 1000 = {factor} kg")
+                return factor
+
+        # Para UND, CJ (sin número), CAJ y otros, usar el factor del catálogo
+        factor = self._calculate_conversion_factor(product_name)
+        print(f"[CONVERSION] {product_name} con {unit_code}: Factor del catálogo = {factor} kg")
+        return factor
 
     def _calculate_conversion_factor(self, product_name: str) -> Decimal:
         """

@@ -360,7 +360,8 @@ class JCRCsvParser:
                 unit_price=unit_price,
                 total_price=valor_bruto,
                 iva_percentage=iva_percentage,        # IVA correcto (5%, 19%, etc.)
-                original_quantity=original_quantity   # Cantidad original del archivo
+                original_quantity=original_quantity,  # Cantidad original del archivo
+                original_unit_code=unit_of_measure    # Unidad original del CSV
             )
 
             return product
