@@ -33,6 +33,7 @@ class JCRReggisExporter:
         'Nombre Producto',
         'Codigo Subyacente',
         'Unidad Medida en Kg,Un,Lt',
+        'Unidad Original',  # NUEVO: Unidad original del archivo (UND, P25, CJ, B20, etc.)
         'Cantidad (5 decimales - separador coma)',
         'Precio Unitario (5 decimales - separador coma)',
         'Fecha Factura A?o-Mes-Dia',
@@ -108,11 +109,14 @@ class JCRReggisExporter:
         for invoice in invoices:
             for product in invoice.products:
                 # Get original quantity if available
+                # Priority: 1) original_quantities dict, 2) product.original_quantity, 3) product.quantity (fallback)
                 key = (invoice.invoice_number, product.name)
                 if original_quantities and key in original_quantities:
                     original_qty = original_quantities[key]
+                elif product.original_quantity is not None:
+                    original_qty = product.original_quantity
                 else:
-                    # If not available, use the converted quantity
+                    # Fallback: use the converted quantity
                     original_qty = product.quantity
 
                 # Prepare row data
@@ -121,6 +125,7 @@ class JCRReggisExporter:
                     product.name,
                     'SPN-1',
                     product.unit_of_measure,
+                    product.get_original_unit_code(),  # NUEVO: Unidad original
                     self._format_decimal(product.quantity),
                     self._format_decimal(product.unit_price),
                     invoice.get_issue_date_formatted(),
