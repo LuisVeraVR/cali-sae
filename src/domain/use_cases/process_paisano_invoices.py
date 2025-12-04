@@ -26,7 +26,7 @@ class ProcessPaisanoInvoices:
         "ACEITE SOYA*500CC SAN MIGUEL EX": Decimal("12.0"),
         "ACEITE*1000ML REF FRISOYA": Decimal("12.0"),
         "ACEITE*2000ML REF FRISOYA": Decimal("12.0"),
-        "ACEITE*3000ML REF FRISOYA": Decimal("6.0"),
+        "ACEITE*3000ML REF FRISOYA": Decimal("18.0"),  # Caja × 6 unid de 3000ml × 0.92 ≈ 16.56 kg
         "ACEITE*500ML REF FRISOYA": Decimal("12.0"),
         "ALPISTE A GRANEL": Decimal("50.0"),
         "ALPISTE*250G": Decimal("6.25"),
@@ -553,10 +553,32 @@ class ProcessPaisanoInvoices:
         return best_factor if best_score >= 0.70 else None
 
     def _extract_grams_from_name(self, name: str) -> Optional[Decimal]:
-        """Extract grams or kilos from product name"""
+        """
+        Extract grams or kilos from product name, considering multipliers.
+
+        Examples:
+        - "PANELA*125G*8UND" → 125 × 8 = 1000 gramos
+        - "FRIJOL*500G" → 500 gramos
+        - "LECHE*380G" → 380 gramos
+        """
         import re
         if not name:
             return None
+
+        # Pattern 1: Detect "XG*YUND" or "XG*Y" (grams with unit multiplier)
+        # Examples: "125G*8UND", "250G*4", "500G*2UND"
+        match = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:G|GR|GRAMOS)\s*\*\s*(\d+)\s*(?:UND|UNID)?', name, re.IGNORECASE)
+        if match:
+            grams = match.group(1).replace('.', '').replace(',', '.')
+            multiplier = match.group(2)
+            try:
+                total_grams = Decimal(grams) * Decimal(multiplier)
+                print(f"[EXTRACT_GRAMS] {name}: {grams}g × {multiplier} = {total_grams}g")
+                return total_grams
+            except Exception:
+                return None
+
+        # Pattern 2: Simple grams (no multiplier)
         match = re.search(r'(\d+(?:[.,]\d+)?)\s*(G|GR|GRAMOS)\b', name, re.IGNORECASE)
         if match:
             value = match.group(1).replace('.', '').replace(',', '.')
@@ -565,6 +587,7 @@ class ProcessPaisanoInvoices:
             except Exception:
                 return None
 
+        # Pattern 3: Kilos
         match = re.search(r'(\d+(?:[.,]\d+)?)\s*(KG|KILO|KILOS)\b', name, re.IGNORECASE)
         if match:
             value = match.group(1).replace('.', '').replace(',', '.')
