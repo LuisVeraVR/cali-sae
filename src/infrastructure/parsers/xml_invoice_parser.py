@@ -19,6 +19,8 @@ from ...domain.entities.invoice import Invoice
 
 from ...domain.entities.product import Product
 
+from .paisano_product_catalog import PaisanoProductCatalog
+
 
 class XMLInvoiceParser:
     """Parser for UBL 2.0 DIAN Colombia electronic invoices"""
@@ -33,6 +35,9 @@ class XMLInvoiceParser:
             "ext": "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2",
             "sts": "dian:gov:co:facturaelectronica:Structures-2-1",
         }
+
+        # Catálogo de productos de El Paisano
+        self.product_catalog = PaisanoProductCatalog()
 
     def parse_zip_file(self, zip_path: str) -> List[Invoice]:
         """
@@ -287,15 +292,19 @@ class XMLInvoiceParser:
             quantity_str = self._get_text(line_element, ".//cbc:InvoicedQuantity", "0")
             original_quantity = Decimal(quantity_str.replace(",", "."))
 
-            # Extraer kilos del nombre del producto
-            kilos_per_unit = self._extract_kilos_from_name(name)
+            # Buscar kilos en el catálogo de productos
+            kilos_per_unit = self.product_catalog.get_kilos_for_product(name)
+
+            # Si no se encuentra en el catálogo, intentar extraer del nombre del producto
+            if kilos_per_unit is None:
+                kilos_per_unit = self._extract_kilos_from_name(name)
 
             # Calcular cantidad convertida
             if kilos_per_unit:
-                # Si hay kilos en el nombre, multiplicar cantidad original por los kilos
+                # Si hay kilos (del catálogo o del nombre), multiplicar cantidad original por los kilos
                 quantity = original_quantity * kilos_per_unit
             else:
-                # Si no hay kilos en el nombre, usar la cantidad original
+                # Si no hay kilos, usar la cantidad original
                 quantity = original_quantity
 
             # Unit price
