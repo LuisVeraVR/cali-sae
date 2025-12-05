@@ -7,6 +7,7 @@ XML Invoice Parser - Parses UBL 2.0 DIAN Colombia invoices
 import xml.etree.ElementTree as ET
 
 import zipfile
+import re
 from pathlib import Path
 from typing import List, Optional
 from decimal import Decimal
@@ -17,6 +18,8 @@ from datetime import datetime
 from ...domain.entities.invoice import Invoice
 
 from ...domain.entities.product import Product
+
+from .paisano_product_catalog import PaisanoProductCatalog
 
 
 class XMLInvoiceParser:
@@ -32,6 +35,9 @@ class XMLInvoiceParser:
             "ext": "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2",
             "sts": "dian:gov:co:facturaelectronica:Structures-2-1",
         }
+
+        # Catálogo de productos de El Paisano
+        self.product_catalog = PaisanoProductCatalog()
 
     def parse_zip_file(self, zip_path: str) -> List[Invoice]:
         """
@@ -228,6 +234,32 @@ class XMLInvoiceParser:
 
             return None
 
+    def _extract_kilos_from_name(self, product_name: str) -> Optional[Decimal]:
+        """
+        Extrae los kilos del nombre del producto.
+
+        Formato esperado: "NOMBRE*PRESENTACION=X,X KILOS EMPAQUE"
+        Ejemplo: "FRIJOL CALIMA*500G=12,5 KILOS PACA" -> 12.5
+
+        Args:
+            product_name: Nombre del producto
+
+        Returns:
+            Decimal con los kilos o None si no se encuentra el patrón
+        """
+        try:
+            # Buscar patrón: =NUMERO KILOS o =NUMERO KILO
+            pattern = r'=\s*(\d+(?:[,\.]\d+)?)\s+KILOS?\b'
+            match = re.search(pattern, product_name, re.IGNORECASE)
+
+            if match:
+                kilos_str = match.group(1).replace(',', '.')
+                return Decimal(kilos_str)
+        except Exception as e:
+            print(f"Error extrayendo kilos del nombre '{product_name}': {str(e)}")
+
+        return None
+
     def _parse_product_line(self, line_element) -> Product:
         """
         Parse a product line from InvoiceLine element
@@ -256,9 +288,24 @@ class XMLInvoiceParser:
             original_unit_code = unit_code
             unit_of_measure = self._convert_unit_code(unit_code)
 
-            # Quantity
+            # Quantity original (tal como viene en el XML)
             quantity_str = self._get_text(line_element, ".//cbc:InvoicedQuantity", "0")
-            quantity = Decimal(quantity_str.replace(",", "."))
+            original_quantity = Decimal(quantity_str.replace(",", "."))
+
+            # Buscar kilos en el catálogo de productos
+            kilos_per_unit = self.product_catalog.get_kilos_for_product(name)
+
+            # Si no se encuentra en el catálogo, intentar extraer del nombre del producto
+            if kilos_per_unit is None:
+                kilos_per_unit = self._extract_kilos_from_name(name)
+
+            # Calcular cantidad convertida
+            if kilos_per_unit:
+                # Si hay kilos (del catálogo o del nombre), multiplicar cantidad original por los kilos
+                quantity = original_quantity * kilos_per_unit
+            else:
+                # Si no hay kilos, usar la cantidad original
+                quantity = original_quantity
 
             # Unit price
             unit_price_str = self._get_text(
@@ -303,6 +350,7 @@ class XMLInvoiceParser:
                 unit_price=unit_price,
                 total_price=total_price,
                 iva_percentage=iva_percentage,
+                original_quantity=original_quantity,
                 original_unit_code=original_unit_code,
             )
 
