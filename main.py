@@ -21,7 +21,6 @@ from src.infrastructure.database.paisano_conversion_repository import (
     PaisanoConversionRepository,
 )
 from src.infrastructure.parsers.xml_invoice_parser import XMLInvoiceParser
-from src.infrastructure.parsers.paisano_pdf_parser import PaisanoPDFParser
 from src.infrastructure.exporters.invoice_exporter import InvoiceExporter
 from src.infrastructure.exporters.csv_exporter import CSVExporter
 from src.infrastructure.exporters.jcr_reggis_exporter import JCRReggisExporter
@@ -54,7 +53,6 @@ class Application:
 
         # Initialize infrastructure services
         self.xml_parser = XMLInvoiceParser()
-        self.paisano_pdf_parser = PaisanoPDFParser()
         self.invoice_exporter = InvoiceExporter()
         self.csv_exporter = CSVExporter()
         self.jcr_reggis_exporter = JCRReggisExporter()
@@ -110,7 +108,6 @@ class Application:
             self.xml_parser,
             self.jcr_reggis_exporter,
             self.paisano_conversion_repository,
-            self.paisano_pdf_parser,
         )
 
         self.get_reports_use_case = GetReports(self.report_repository)

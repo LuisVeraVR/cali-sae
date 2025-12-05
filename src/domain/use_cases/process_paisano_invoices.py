@@ -1,6 +1,6 @@
 """
 Process El Paisano Invoices Use Case
-Parses XML/PDF invoices from folders and exports to Reggis CSV
+Parses XML invoices from folders and exports to Reggis CSV
 """
 from typing import List, Callable, Optional
 from decimal import Decimal
@@ -86,14 +86,12 @@ class ProcessPaisanoInvoices:
         report_repository: ReportRepositoryInterface,
         xml_parser,  # XMLInvoiceParser
         reggis_exporter,  # JCRReggisExporter (Reggis CSV exporter)
-        conversion_repository=None,  # PaisanoConversionRepository
-        pdf_parser=None  # PaisanoPDFParser
+        conversion_repository=None  # PaisanoConversionRepository
     ):
         self.report_repository = report_repository
         self.xml_parser = xml_parser
         self.reggis_exporter = reggis_exporter
         self.conversion_repository = conversion_repository
-        self.pdf_parser = pdf_parser
         self._reload_catalog()
 
     def execute(
@@ -103,10 +101,10 @@ class ProcessPaisanoInvoices:
         progress_callback: Optional[Callable[[int, int], None]] = None
     ) -> tuple[bool, str, int]:
         """
-        Process XML/PDF invoices (folders or individual files) and export to Reggis CSV
+        Process XML invoices (folders or individual files) and export to Reggis CSV
 
         Args:
-            input_paths: List of folder paths or XML/PDF file paths
+            input_paths: List of folder paths or XML file paths
             username: Username of the person processing
             progress_callback: Optional callback for progress updates (current, total)
 
@@ -121,7 +119,7 @@ class ProcessPaisanoInvoices:
         total_items = len(files_to_process)
 
         if not total_items:
-            return False, "No se encontraron archivos XML o PDF", 0
+            return False, "No se encontraron archivos XML", 0
 
         # Reload catalog each run to pick up new conversions
         self._reload_catalog()
@@ -562,7 +560,7 @@ class ProcessPaisanoInvoices:
         return "AGRANEL" in normalized or "A GRANEL" in normalized or "GRANEL" in normalized
 
     def _expand_input_paths(self, paths: List[str]) -> List[Path]:
-        """Return a flat list of XML/PDF files from provided paths"""
+        """Return a flat list of XML files from provided paths"""
         collected: List[Path] = []
         for raw_path in paths:
             p = Path(raw_path)
@@ -571,28 +569,21 @@ class ProcessPaisanoInvoices:
                     sorted(
                         f
                         for f in p.rglob("*")
-                        if f.is_file() and f.suffix.lower() in {".xml", ".pdf"}
+                        if f.is_file() and f.suffix.lower() == ".xml"
                     )
                 )
-            elif p.is_file() and p.suffix.lower() in {".xml", ".pdf"}:
+            elif p.is_file() and p.suffix.lower() == ".xml":
                 collected.append(p)
         return collected
 
     def _parse_input_path(self, path: Path) -> List[Invoice]:
-        """Parse a single XML or PDF path into invoices"""
+        """Parse a single XML path into invoices"""
         if not path.exists() or not path.is_file():
             return []
 
         suffix = path.suffix.lower()
         if suffix == ".xml":
             invoice = self.xml_parser.parse_xml_file(str(path))
-            return [invoice] if invoice else []
-
-        if suffix == ".pdf":
-            if not self.pdf_parser:
-                print(f"No hay parser PDF configurado para {path}")
-                return []
-            invoice = self.pdf_parser.parse_pdf_file(str(path))
             return [invoice] if invoice else []
 
         return []

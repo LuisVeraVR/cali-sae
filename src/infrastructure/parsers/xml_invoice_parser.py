@@ -192,8 +192,17 @@ class XMLInvoiceParser:
             buyer_name = ""
 
             if customer is not None:
+                # Try multiple locations for buyer NIT
+                # 1. Try PartyTaxScheme/CompanyID (most common in Colombia)
+                buyer_nit = self._get_text(customer, ".//cac:PartyTaxScheme/cbc:CompanyID", "")
 
-                buyer_nit = self._get_text(customer, ".//cbc:CompanyID", "")
+                # 2. If not found, try PartyIdentification/ID
+                if not buyer_nit:
+                    buyer_nit = self._get_text(customer, ".//cac:PartyIdentification/cbc:ID", "")
+
+                # 3. If not found, try direct CompanyID (fallback)
+                if not buyer_nit:
+                    buyer_nit = self._get_text(customer, ".//cbc:CompanyID", "")
 
                 buyer_name = self._get_text(customer, ".//cbc:RegistrationName", "")
 
