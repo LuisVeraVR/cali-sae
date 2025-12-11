@@ -81,7 +81,7 @@ class ExcelExporter:
                     'Activa Factura': 'Sí',
                     'Activa Bodega': 'Sí',
                     'Incentivo': '',
-                    'Cantidad Original': product.get_formatted_quantity(),
+                    'Cantidad Original': product.get_formatted_original_quantity(),
                     'Moneda': invoice.format_currency_code()
                 }
 
