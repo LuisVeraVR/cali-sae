@@ -147,8 +147,11 @@ class ProcessPaisanoInvoices:
 
             for invoice in all_invoices:
                 for product in invoice.products:
-                    original_qty = product.quantity
-                    product.original_quantity = original_qty
+                    # Guardar cantidad original si no está ya establecida (viene del XML)
+                    if product.original_quantity is None:
+                        product.original_quantity = product.quantity
+
+                    original_qty = product.original_quantity
 
                     # Get conversion factor (catalog first, then heuristics)
                     # NUEVO: Ajustar factor según la unidad original (UND, P25, CJ, etc.)
