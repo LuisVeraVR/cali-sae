@@ -107,13 +107,16 @@ class JCRReggisExporter:
         row_idx = 2
         for invoice in invoices:
             for product in invoice.products:
-                # Get original quantity if available
-                key = (invoice.invoice_number, product.name)
-                if original_quantities and key in original_quantities:
-                    original_qty = original_quantities[key]
+                # Get original quantity from product entity first, then fallback to dict/converted
+                if product.original_quantity is not None:
+                    original_qty = product.original_quantity
                 else:
-                    # If not available, use the converted quantity
-                    original_qty = product.quantity
+                    key = (invoice.invoice_number, product.name)
+                    if original_quantities and key in original_quantities:
+                        original_qty = original_quantities[key]
+                    else:
+                        # If not available, use the converted quantity
+                        original_qty = product.quantity
 
                 # Prepare row data
                 row_data = [
