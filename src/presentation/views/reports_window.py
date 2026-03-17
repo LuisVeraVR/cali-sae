@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Reports Window - Admin panel for viewing and exporting reports
 """

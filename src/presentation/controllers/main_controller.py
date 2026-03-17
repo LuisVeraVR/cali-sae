@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Main Controller - Coordinates main application logic between UI and use cases
 """

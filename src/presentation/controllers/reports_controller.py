@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Reports Controller - Coordinates report operations between UI and use cases
 """

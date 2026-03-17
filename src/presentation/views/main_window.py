@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """
 Main Window - Main application window with tabs for different companies
@@ -86,7 +87,7 @@ class MainWindow(QMainWindow):
             layout.addWidget(reports_btn)
 
         # Logout button
-        logout_btn = QPushButton("Cerrar sesi?n")
+        logout_btn = QPushButton("Cerrar sesión")
         logout_btn.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         logout_btn.setStyleSheet(self._get_header_button_style("#ef4444"))
         logout_btn.clicked.connect(self.logout)
@@ -109,7 +110,7 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("color: #1f2d3d;")
         layout.addWidget(title)
 
-        subtitle = QLabel("Sistema de Extracci?n de Facturas Electr?nicas")
+        subtitle = QLabel("Sistema de Extracción de Facturas Electrónicas")
         subtitle.setFont(QFont("Arial", 12))
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setStyleSheet("color: #7a8ca5; margin-bottom: 10px;")
@@ -166,9 +167,9 @@ class MainWindow(QMainWindow):
             if update_available:
                 msg = QMessageBox()
                 msg.setIcon(QMessageBox.Icon.Information)
-                msg.setWindowTitle("Actualizaci?n Disponible")
-                msg.setText(f"Nueva versi?n disponible: {latest_version}")
-                msg.setInformativeText("?Desea descargar la actualizaci?n?")
+                msg.setWindowTitle("Actualización Disponible")
+                msg.setText(f"Nueva versión disponible: {latest_version}")
+                msg.setInformativeText("¿Desea descargar la actualizaci?n?")
                 msg.setStandardButtons(
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
                 )
@@ -188,7 +189,7 @@ class MainWindow(QMainWindow):
             success, message = self.main_controller.download_update(download_url, output_path)
 
             if success:
-                QMessageBox.information(self, "?xito", message)
+                QMessageBox.information(self, "Éxito", message)
             else:
                 QMessageBox.warning(self, "Error", message)
 
@@ -203,8 +204,8 @@ class MainWindow(QMainWindow):
         """Confirm and emit logout signal"""
         reply = QMessageBox.question(
             self,
-            "Cerrar sesi?n",
-            "?Est? seguro que desea cerrar sesi?n?",
+            "Cerrar sesión",
+            "¿Está seguro que desea cerrar sesión?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
 

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Authentication Controller - Coordinates authentication between UI and use cases
 """
