@@ -222,8 +222,9 @@ class PaisanoPDFParser:
 
         # Pattern 1: With pipe separators (most common)
         # |001 000002 FRIJOL CALIMA*500G 01 55 P25 105,000.00 0.00 5,775,000.00 0.00*|
+        # NOTA: Cambiado (\d+) a ([\d,]+) para capturar decimales como "3,00000"
         pattern1 = re.compile(
-            r'\|(\d{3})\s+(\d{6})\s+(.+?)\s+\d{2}\s+(\d+)\s+([A-Z0-9]+)\s+([\d,\.]+)\s+[\d,\.]+\s+([\d,\.]+)\s+([\d\.]+)\*?\|'
+            r'\|(\d{3})\s+(\d{6})\s+(.+?)\s+\d{2}\s+([\d,]+)\s+([A-Z0-9]+)\s+([\d,\.]+)\s+[\d,\.]+\s+([\d,\.]+)\s+([\d\.]+)\*?\|'
         )
 
         for match in pattern1.finditer(text):
@@ -237,8 +238,9 @@ class PaisanoPDFParser:
 
         # Pattern 2: Without pipe at end (some PDFs)
         # |001 000002 FRIJOL CALIMA*500G 01 55 P25 105,000.00 0.00 5,775,000.00 0.00*
+        # NOTA: Cambiado (\d+) a ([\d,]+) para capturar decimales como "3,00000"
         pattern2 = re.compile(
-            r'\|(\d{3})\s+(\d{6})\s+(.+?)\s+\d{2}\s+(\d+)\s+([A-Z0-9]+)\s+([\d,\.]+)\s+[\d,\.]+\s+([\d,\.]+)\s+([\d\.]+)\*?'
+            r'\|(\d{3})\s+(\d{6})\s+(.+?)\s+\d{2}\s+([\d,]+)\s+([A-Z0-9]+)\s+([\d,\.]+)\s+[\d,\.]+\s+([\d,\.]+)\s+([\d\.]+)\*?'
         )
 
         for match in pattern2.finditer(text):
@@ -252,8 +254,9 @@ class PaisanoPDFParser:
 
         # Pattern 3: Without initial pipe (alternate extraction)
         # 001 000002 FRIJOL CALIMA*500G 01 55 P25 105,000.00 0.00 5,775,000.00 0.00*
+        # NOTA: Cambiado (\d+) a ([\d,]+) para capturar decimales como "3,00000"
         pattern3 = re.compile(
-            r'^(\d{3})\s+(\d{6})\s+(.+?)\s+\d{2}\s+(\d+)\s+([A-Z0-9]+)\s+([\d,\.]+)\s+[\d,\.]+\s+([\d,\.]+)\s+([\d\.]+)\*?',
+            r'^(\d{3})\s+(\d{6})\s+(.+?)\s+\d{2}\s+([\d,]+)\s+([A-Z0-9]+)\s+([\d,\.]+)\s+[\d,\.]+\s+([\d,\.]+)\s+([\d\.]+)\*?',
             re.MULTILINE
         )
 
@@ -268,8 +271,9 @@ class PaisanoPDFParser:
 
         # Pattern 4: Flexible spacing
         # Handles variable spaces between fields
+        # NOTA: Cambiado (\d+) a ([\d,]+) para capturar decimales como "3,00000"
         pattern4 = re.compile(
-            r'(\d{3})\s+(\d{6})\s+(.+?)\s+\d{2}\s+(\d+)\s+([A-Z0-9]+)\s+([\d,\.]+)\s+[\d,\.]+\s+([\d,\.]+)\s+([\d\.]+)',
+            r'(\d{3})\s+(\d{6})\s+(.+?)\s+\d{2}\s+([\d,]+)\s+([A-Z0-9]+)\s+([\d,\.]+)\s+[\d,\.]+\s+([\d,\.]+)\s+([\d\.]+)',
             re.MULTILINE
         )
 
@@ -317,7 +321,9 @@ class PaisanoPDFParser:
                 else:
                     return Decimal(cleaned) if cleaned else Decimal("0")
 
-            quantity = Decimal(quantity_str)
+            # Limpiar cantidad: remover comas decimales y convertir a Decimal
+            # Ejemplo: "3,00000" -> "3.00000"
+            quantity = Decimal(quantity_str.replace(",", "."))
             unit_price = parse_paisano_number(match.group(6))
             total_price = parse_paisano_number(match.group(7))
             iva_percentage = Decimal(iva_str.replace(",", "."))
