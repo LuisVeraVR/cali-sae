@@ -65,7 +65,7 @@ class ElPaisanoTab(QWidget):
         title.setStyleSheet("color: #e67e22;")
         layout.addWidget(title)
 
-        subtitle = QLabel("Procesar XML/PDF y exportar a plantilla Reggis")
+        subtitle = QLabel("Procesar XML y exportar a plantilla Reggis")
         subtitle.setFont(QFont("Arial", 11))
         subtitle.setStyleSheet("color: #7f8c8d;")
         layout.addWidget(subtitle)
@@ -123,7 +123,7 @@ class ElPaisanoTab(QWidget):
         layout.setSpacing(10)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        label = QLabel("Carpetas o archivos XML/PDF:")
+        label = QLabel("Carpetas o archivos XML:")
         label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(label)
 
@@ -134,7 +134,7 @@ class ElPaisanoTab(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
 
-        add_btn = QPushButton("Agregar carpeta/XML/PDF")
+        add_btn = QPushButton("Agregar carpeta/XML")
         add_btn.setStyleSheet(self._get_button_style("#e67e22"))
         add_btn.clicked.connect(self.add_xml_paths)
         btn_layout.addWidget(add_btn)
@@ -185,14 +185,14 @@ class ElPaisanoTab(QWidget):
     def add_xml_paths(self):
         folder = QFileDialog.getExistingDirectory(
             self,
-            "Seleccionar carpeta con XML o PDF",
+            "Seleccionar carpeta con XML",
             ""
         )
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Seleccionar archivos XML/PDF (opcional)",
+            "Seleccionar archivos XML (opcional)",
             "",
-            "XML/PDF Files (*.xml *.pdf);;Todos los archivos (*.*)"
+            "XML Files (*.xml);;Todos los archivos (*.*)"
         )
 
         added = False
@@ -217,7 +217,7 @@ class ElPaisanoTab(QWidget):
 
     def process_invoices(self):
         if not self.file_paths:
-            QMessageBox.warning(self, "Error", "Seleccione al menos una carpeta o archivo XML o PDF")
+            QMessageBox.warning(self, "Error", "Seleccione al menos una carpeta o archivo XML")
             return
 
         self.setEnabled(False)
