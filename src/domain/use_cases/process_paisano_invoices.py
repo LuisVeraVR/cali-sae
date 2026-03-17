@@ -26,7 +26,7 @@ class ProcessPaisanoInvoices:
         "ACEITE SOYA*500CC SAN MIGUEL EX": Decimal("12.0"),
         "ACEITE*1000ML REF FRISOYA": Decimal("12.0"),
         "ACEITE*2000ML REF FRISOYA": Decimal("12.0"),
-        "ACEITE*3000ML REF FRISOYA": Decimal("6.0"),
+        "ACEITE*3000ML REF FRISOYA": Decimal("18.0"),  # Caja × 6 unid de 3000ml × 0.92 ≈ 16.56 kg
         "ACEITE*500ML REF FRISOYA": Decimal("12.0"),
         "ALPISTE A GRANEL": Decimal("50.0"),
         "ALPISTE*250G": Decimal("6.25"),
@@ -307,14 +307,16 @@ class ProcessPaisanoInvoices:
         Calculate conversion factor considering both product name AND unit code.
 
         Unit codes:
-        - UND: Unidad (usa factor del catálogo)
+        - UND: Unidad individual (calcula: gramos ÷ 1000 o volumen × densidad)
         - P25, P20, P12: Pacas (calcula: num_paca × gramos ÷ 1000)
         - CJ, CAJ: Cajas (usa factor del catálogo)
+        - B20, B10: Bultos con peso fijo (B20 = 20 kg)
         - Kg: Kilos (ya está en kilos, factor 1.0)
 
         Examples:
-        - FRIJOL CALIMA*500G con UND: factor del catálogo (7.5 kg)
-        - FRIJOL CALIMA*500G con P25: (25 × 500 ÷ 1000) = 12.5 kg
+        - FRIJOL CALIMA*500G con UND: (500 ÷ 1000) = 0.5 kg por unidad
+        - FRIJOL CALIMA*500G con P25: (25 × 500 ÷ 1000) = 12.5 kg por paca
+        - SEMILLA GIRASOL A GRANEL con B20: 20 kg por bulto
         """
         if not unit_code:
             return self._calculate_conversion_factor(product_name)
@@ -325,8 +327,15 @@ class ProcessPaisanoInvoices:
         if unit_upper in ["KG", "KGM"]:
             return Decimal("1.0")
 
-        # Detectar pacas (P25, P20, P12, etc.)
+        # Detectar bultos con peso fijo (B20, B10, B25, etc.)
         import re
+        bulto_match = re.match(r'B(\d+)', unit_upper)
+        if bulto_match:
+            bulto_kg = Decimal(bulto_match.group(1))
+            print(f"[CONVERSION] {product_name} con {unit_code}: Bulto de {bulto_kg} kg")
+            return bulto_kg
+
+        # Detectar pacas (P25, P20, P12, etc.)
         paca_match = re.match(r'P(\d+)', unit_upper)
         if paca_match:
             paca_count = int(paca_match.group(1))
@@ -340,9 +349,10 @@ class ProcessPaisanoInvoices:
             # Si no hay gramos en el nombre, usar volumen (CC/ML)
             volume_cc = self._extract_volume_cc_from_name(product_name)
             if volume_cc:
-                # Formula: (paca_count × volumen_cc ÷ 1000)
-                factor = (Decimal(str(paca_count)) * volume_cc) / Decimal("1000")
-                print(f"[CONVERSION] {product_name} con {unit_code}: P{paca_count} × {volume_cc}cc ÷ 1000 = {factor} kg")
+                # Formula: (paca_count × volumen_cc ÷ 1000) × densidad
+                density = Decimal("0.92")  # Para aceites
+                factor = (Decimal(str(paca_count)) * volume_cc * density) / Decimal("1000")
+                print(f"[CONVERSION] {product_name} con {unit_code}: P{paca_count} × {volume_cc}cc × {density} ÷ 1000 = {factor} kg")
                 return factor
 
         # Detectar cajas con número (CJ12, CJ24, etc.)
@@ -359,12 +369,36 @@ class ProcessPaisanoInvoices:
             # Si no hay gramos en el nombre, usar volumen (CC/ML)
             volume_cc = self._extract_volume_cc_from_name(product_name)
             if volume_cc:
-                # Formula: (caja_count × volumen_cc ÷ 1000)
-                factor = (Decimal(str(caja_count)) * volume_cc) / Decimal("1000")
-                print(f"[CONVERSION] {product_name} con {unit_code}: CJ{caja_count} × {volume_cc}cc ÷ 1000 = {factor} kg")
+                # Formula: (caja_count × volumen_cc ÷ 1000) × densidad
+                density = Decimal("0.92")  # Para aceites
+                factor = (Decimal(str(caja_count)) * volume_cc * density) / Decimal("1000")
+                print(f"[CONVERSION] {product_name} con {unit_code}: CJ{caja_count} × {volume_cc}cc × {density} ÷ 1000 = {factor} kg")
                 return factor
 
-        # Para UND, CJ (sin número), CAJ y otros, usar el factor del catálogo
+        # Para UND (unidades individuales): calcular basándose en gramos/volumen del producto
+        if unit_upper == "UND":
+            # Intentar extraer gramos del nombre
+            grams = self._extract_grams_from_name(product_name)
+            if grams:
+                factor = grams / Decimal("1000")
+                print(f"[CONVERSION] {product_name} con UND: {grams}g ÷ 1000 = {factor} kg por unidad")
+                return factor
+
+            # Intentar extraer volumen (para aceites, etc.)
+            volume_cc = self._extract_volume_cc_from_name(product_name)
+            if volume_cc:
+                density = Decimal("0.92")  # Para aceites
+                factor = (volume_cc * density) / Decimal("1000")
+                print(f"[CONVERSION] {product_name} con UND: {volume_cc}cc × {density} ÷ 1000 = {factor} kg por unidad")
+                return factor
+
+            # Si es producto a granel con UND, usar peso estándar
+            if self._is_bulk_product(product_name):
+                factor = Decimal("50.0")
+                print(f"[CONVERSION] {product_name} con UND: Producto a granel = {factor} kg")
+                return factor
+
+        # Para CJ, CAJ (sin número) y otros códigos, usar el factor del catálogo
         factor = self._calculate_conversion_factor(product_name)
         print(f"[CONVERSION] {product_name} con {unit_code}: Factor del catálogo = {factor} kg")
         return factor
@@ -520,10 +554,32 @@ class ProcessPaisanoInvoices:
         return best_factor if best_score >= 0.70 else None
 
     def _extract_grams_from_name(self, name: str) -> Optional[Decimal]:
-        """Extract grams or kilos from product name"""
+        """
+        Extract grams or kilos from product name, considering multipliers.
+
+        Examples:
+        - "PANELA*125G*8UND" → 125 × 8 = 1000 gramos
+        - "FRIJOL*500G" → 500 gramos
+        - "LECHE*380G" → 380 gramos
+        """
         import re
         if not name:
             return None
+
+        # Pattern 1: Detect "XG*YUND" or "XG*Y" (grams with unit multiplier)
+        # Examples: "125G*8UND", "250G*4", "500G*2UND"
+        match = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:G|GR|GRAMOS)\s*\*\s*(\d+)\s*(?:UND|UNID)?', name, re.IGNORECASE)
+        if match:
+            grams = match.group(1).replace('.', '').replace(',', '.')
+            multiplier = match.group(2)
+            try:
+                total_grams = Decimal(grams) * Decimal(multiplier)
+                print(f"[EXTRACT_GRAMS] {name}: {grams}g × {multiplier} = {total_grams}g")
+                return total_grams
+            except Exception:
+                return None
+
+        # Pattern 2: Simple grams (no multiplier)
         match = re.search(r'(\d+(?:[.,]\d+)?)\s*(G|GR|GRAMOS)\b', name, re.IGNORECASE)
         if match:
             value = match.group(1).replace('.', '').replace(',', '.')
@@ -532,6 +588,7 @@ class ProcessPaisanoInvoices:
             except Exception:
                 return None
 
+        # Pattern 3: Kilos
         match = re.search(r'(\d+(?:[.,]\d+)?)\s*(KG|KILO|KILOS)\b', name, re.IGNORECASE)
         if match:
             value = match.group(1).replace('.', '').replace(',', '.')
