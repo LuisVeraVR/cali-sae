@@ -42,8 +42,10 @@ class GitHubUpdater:
             if response.status_code == 200:
                 release_data = response.json()
 
-                # Extract version (remove 'v' prefix if present)
-                version = release_data.get("tag_name", "").replace("v", "")
+                tag_name = release_data.get("tag_name", "")
+                if tag_name.lower().startswith("v"):
+                    tag_name = tag_name[1:]
+                version = tag_name
 
                 # Extract download URL from assets
                 assets = release_data.get("assets", [])

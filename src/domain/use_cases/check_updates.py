@@ -1,14 +1,14 @@
 """
 Check Updates Use Case
 """
-from typing import Optional, Tuple
+from typing import Optional, Tuple
 from packaging import version
 
 
 class CheckUpdates:
     """Use case for checking for updates from GitHub"""
 
-    def __init__(self, github_updater, current_version: str):
+    def __init__(self, github_updater, current_version: str, update_state=None):
         """
         Initialize the use case
 
@@ -18,6 +18,7 @@ class CheckUpdates:
         """
         self.github_updater = github_updater
         self.current_version = current_version
+        self.update_state = update_state
 
     def execute(self) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
         """
@@ -33,14 +34,18 @@ class CheckUpdates:
             if not latest_version:
                 return False, None, None, None
 
-            # Compare versions
-            current = version.parse(self.current_version)
-            latest = version.parse(latest_version)
-
-            if latest > current:
-                return True, latest_version, download_url, release_notes
-            else:
-                return False, latest_version, None, None
+            if self.update_state is not None:
+                installed_tag = self.update_state.get_installed_tag() or self.current_version
+                if latest_version != installed_tag:
+                    return True, latest_version, download_url, release_notes
+                return False, latest_version, None, None
+
+            current = version.parse(self.current_version)
+            latest = version.parse(latest_version)
+
+            if latest > current:
+                return True, latest_version, download_url, release_notes
+            return False, latest_version, None, None
 
         except Exception as e:
             print(f"Error checking for updates: {str(e)}")

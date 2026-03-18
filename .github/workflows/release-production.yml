@@ -1,0 +1,43 @@
+name: Build and Release (production)
+
+on:
+  push:
+    branches:
+      - production
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build exe
+        run: |
+          pyinstaller --clean --noconfirm main.spec
+
+      - name: Prepare artifact
+        run: |
+          if (Test-Path dist\\main.exe) { Copy-Item dist\\main.exe dist\\CaliSAE.exe -Force }
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: production-${{ github.run_number }}
+          name: Production ${{ github.run_number }}
+          generate_release_notes: true
+          files: |
+            dist/CaliSAE.exe
+

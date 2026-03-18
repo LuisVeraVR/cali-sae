@@ -4,15 +4,16 @@ Sistema de Facturas Electrónicas
 Clean Architecture with PyQt6
 """
 import sys
+from datetime import datetime
 from PyQt6.QtWidgets import QApplication
 
 # Domain layer
-from src.domain.use_cases.authenticate_user import AuthenticateUser, ChangePassword
 from src.domain.use_cases.process_invoices import ProcessInvoices
 from src.domain.use_cases.process_jcr_invoices import ProcessJCRInvoices
 from src.domain.use_cases.process_paisano_invoices import ProcessPaisanoInvoices
 from src.domain.use_cases.generate_report import GetReports, ExportReports
 from src.domain.use_cases.check_updates import CheckUpdates, DownloadUpdate
+from src.domain.entities.user import User
 
 # Infrastructure layer
 from src.infrastructure.database.sqlite_user_repository import SQLiteUserRepository
@@ -25,12 +26,11 @@ from src.infrastructure.exporters.invoice_exporter import InvoiceExporter
 from src.infrastructure.exporters.csv_exporter import CSVExporter
 from src.infrastructure.exporters.jcr_reggis_exporter import JCRReggisExporter
 from src.infrastructure.updater.github_updater import GitHubUpdater
+from src.infrastructure.updater.update_state import UpdateState
 
 # Presentation layer
-from src.presentation.controllers.auth_controller import AuthController
 from src.presentation.controllers.main_controller import MainController
 from src.presentation.controllers.reports_controller import ReportsController
-from src.presentation.views.auth_window import AuthWindow
 from src.presentation.views.main_window import MainWindow
 from src.presentation.views.reports_window import ReportsWindow
 
@@ -59,40 +59,29 @@ class Application:
         self.github_updater = GitHubUpdater(
             repo_owner="LuisVeraVR", repo_name="cali-sae"
         )
-
-        # Initialize use cases for authentication
-        self.authenticate_use_case = AuthenticateUser(self.user_repository)
-        self.change_password_use_case = ChangePassword(self.user_repository)
-
-        # Initialize auth controller
-        self.auth_controller = AuthController(
-            self.authenticate_use_case, self.change_password_use_case
-        )
+        self.update_state = UpdateState()
 
         # Windows
-        self.auth_window = None
         self.main_window = None
         self.reports_window = None
 
-        # Current user (set after login)
-        self.current_user = None
+        self.current_user = User(
+            id=0,
+            username="OPERADOR",
+            password_hash="",
+            user_type="admin",
+            created_at=datetime.now(),
+            last_login=datetime.now(),
+        )
 
     def run(self):
         """Run the application"""
-        self.show_auth_window()
+        self.bootstrap()
+        self.show_main_window()
         return self.app.exec()
 
-    def show_auth_window(self):
-        """Show authentication window"""
-        self.auth_window = AuthWindow(self.auth_controller)
-        self.auth_window.login_successful.connect(self.on_login_successful)
-        self.auth_window.show()
-
-    def on_login_successful(self, user):
-        """Handle successful login"""
-        self.current_user = user
-
-        # Initialize use cases that require user context
+    def bootstrap(self):
+        """Initialize use cases and controllers"""
         self.process_invoices_use_case = ProcessInvoices(
             self.report_repository, self.xml_parser, self.invoice_exporter
         )
@@ -116,7 +105,7 @@ class Application:
             self.report_repository, self.csv_exporter
         )
 
-        self.check_updates_use_case = CheckUpdates(self.github_updater, self.VERSION)
+        self.check_updates_use_case = CheckUpdates(self.github_updater, self.VERSION, update_state=self.update_state)
         self.download_update_use_case = DownloadUpdate(self.github_updater)
 
         # Initialize main controller
@@ -128,6 +117,7 @@ class Application:
             self.download_update_use_case,
             self.current_user,
             self.paisano_conversion_repository,
+            update_state=self.update_state,
         )
 
         # Initialize reports controller
@@ -135,13 +125,9 @@ class Application:
             self.get_reports_use_case, self.export_reports_use_case
         )
 
-        # Show main window
-        self.show_main_window()
-
     def show_main_window(self):
         """Show main application window"""
         self.main_window = MainWindow(self.main_controller, self.reports_controller)
-        self.main_window.logout_requested.connect(self.on_logout)
         self.main_window.reports_requested.connect(self.show_reports_window)
         self.main_window.show()
 
@@ -156,14 +142,6 @@ class Application:
             else:
                 self.reports_window.raise_()
                 self.reports_window.activateWindow()
-
-    def on_logout(self):
-        """Handle user logout"""
-        self.current_user = None
-        self.main_window = None
-        self.reports_window = None
-        self.show_auth_window()
-
 
 def main():
     """Main entry point"""

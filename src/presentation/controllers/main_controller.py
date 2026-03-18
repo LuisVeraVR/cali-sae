@@ -1,32 +1,50 @@
 # -*- coding: utf-8 -*-
-"""
-Main Controller - Coordinates main application logic between UI and use cases
-"""
-from typing import List, Callable, Optional, Tuple
+"""
+
+Main Controller - Coordinates main application logic between UI and use cases
+
+"""
+
+from typing import List, Callable, Optional, Tuple
+
 from ...domain.use_cases.process_invoices import ProcessInvoices
 from ...domain.use_cases.process_jcr_invoices import ProcessJCRInvoices
 from ...domain.use_cases.process_paisano_invoices import ProcessPaisanoInvoices
-from ...domain.use_cases.check_updates import CheckUpdates, DownloadUpdate
-from ...domain.entities.user import User
-
-
-class MainController:
-    """Controller for main application operations"""
-
-    def __init__(
-        self,
+from ...domain.use_cases.check_updates import CheckUpdates, DownloadUpdate
+
+from ...domain.entities.user import User
+
+
+
+
+
+class MainController:
+
+    """Controller for main application operations"""
+
+
+
+    def __init__(
+
+        self,
+
         process_invoices_use_case: ProcessInvoices,
         process_jcr_invoices_use_case: ProcessJCRInvoices,
         process_paisano_invoices_use_case: ProcessPaisanoInvoices,
         check_updates_use_case: CheckUpdates,
         download_update_use_case: DownloadUpdate,
         current_user: User,
-        paisano_conversion_repository
+        paisano_conversion_repository,
+        update_state=None
     ):
-        """
-        Initialize main controller
-
-        Args:
+        """
+
+        Initialize main controller
+
+
+
+        Args:
+
             process_invoices_use_case: Use case for processing invoices
             process_jcr_invoices_use_case: Use case for processing JCR invoices
             process_paisano_invoices_use_case: Use case for processing El Paisano invoices
@@ -41,59 +59,113 @@ class MainController:
         self.download_update_use_case = download_update_use_case
         self.current_user = current_user
         self.paisano_conversion_repository = paisano_conversion_repository
-
-    def process_invoices(
-        self,
-        zip_files: List[str],
-        company: str,
-        output_format: str = 'csv',
-        excel_file: Optional[str] = None,
-        excel_sheet: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, int], None]] = None
-    ) -> Tuple[bool, str, int]:
-        """
-        Process invoice ZIP files
-
-        Args:
-            zip_files: List of ZIP file paths
-            company: Company name
-            output_format: 'csv' or 'excel'
-            excel_file: Excel file path (if format is 'excel')
-            excel_sheet: Excel sheet name (if format is 'excel')
-            progress_callback: Optional callback for progress updates
-
-        Returns:
-            Tuple of (success, message, records_processed)
-        """
-        return self.process_invoices_use_case.execute(
-            zip_files=zip_files,
-            company=company,
-            username=self.current_user.username,
-            output_format=output_format,
-            excel_file=excel_file,
-            excel_sheet=excel_sheet,
-            progress_callback=progress_callback
-        )
-
-    def process_jcr_invoices(
-        self,
-        csv_files: List[str],
-        municipality: str,
-        iva_percentage: str,
-        progress_callback: Optional[Callable[[int, int], None]] = None
-    ) -> Tuple[bool, str, int]:
-        """
-        Process Juan Camilo Rosas invoice CSV/TXT files
-
-        Args:
-            csv_files: List of CSV/TXT file paths
-            municipality: Municipality name for invoices
-            iva_percentage: IVA percentage to use
-            progress_callback: Optional callback for progress updates
-
-        Returns:
-            Tuple of (success, message, records_processed)
-        """
+        self.update_state = update_state
+
+
+    def process_invoices(
+
+        self,
+
+        zip_files: List[str],
+
+        company: str,
+
+        output_format: str = 'csv',
+
+        excel_file: Optional[str] = None,
+
+        excel_sheet: Optional[str] = None,
+
+        progress_callback: Optional[Callable[[int, int], None]] = None
+
+    ) -> Tuple[bool, str, int]:
+
+        """
+
+        Process invoice ZIP files
+
+
+
+        Args:
+
+            zip_files: List of ZIP file paths
+
+            company: Company name
+
+            output_format: 'csv' or 'excel'
+
+            excel_file: Excel file path (if format is 'excel')
+
+            excel_sheet: Excel sheet name (if format is 'excel')
+
+            progress_callback: Optional callback for progress updates
+
+
+
+        Returns:
+
+            Tuple of (success, message, records_processed)
+
+        """
+
+        return self.process_invoices_use_case.execute(
+
+            zip_files=zip_files,
+
+            company=company,
+
+            username=self.current_user.username,
+
+            output_format=output_format,
+
+            excel_file=excel_file,
+
+            excel_sheet=excel_sheet,
+
+            progress_callback=progress_callback
+
+        )
+
+
+
+    def process_jcr_invoices(
+
+        self,
+
+        csv_files: List[str],
+
+        municipality: str,
+
+        iva_percentage: str,
+
+        progress_callback: Optional[Callable[[int, int], None]] = None
+
+    ) -> Tuple[bool, str, int]:
+
+        """
+
+        Process Juan Camilo Rosas invoice CSV/TXT files
+
+
+
+        Args:
+
+            csv_files: List of CSV/TXT file paths
+
+            municipality: Municipality name for invoices
+
+            iva_percentage: IVA percentage to use
+
+            progress_callback: Optional callback for progress updates
+
+
+
+        Returns:
+
+            Tuple of (success, message, records_processed)
+
+        """
+
         return self.process_jcr_invoices_use_case.execute(
             csv_files=csv_files,
             municipality=municipality,
@@ -128,37 +200,93 @@ class MainController:
             return True, "Conversión guardada"
         except Exception as exc:
             return False, f"Error guardando conversión: {exc}"
-
-    def check_updates(self) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
-        """
-        Check for updates from GitHub
-
-        Returns:
-            Tuple of (update_available, latest_version, download_url, release_notes)
-        """
-        return self.check_updates_use_case.execute()
-
-    def download_update(self, download_url: str, output_path: str) -> Tuple[bool, str]:
-        """
-        Download update from URL
-
-        Args:
-            download_url: URL to download from
-            output_path: Where to save the file
-
-        Returns:
-            Tuple of (success, message)
-        """
-        return self.download_update_use_case.execute(download_url, output_path)
-
-    def is_admin(self) -> bool:
-        """Check if current user is admin"""
-        return self.current_user.is_admin()
-
-    def get_username(self) -> str:
-        """Get current username"""
-        return self.current_user.username
-
-    def get_user_type(self) -> str:
-        """Get current user type"""
-        return self.current_user.user_type
+
+
+    def check_updates(self) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
+
+        """
+
+        Check for updates from GitHub
+
+
+
+        Returns:
+
+            Tuple of (update_available, latest_version, download_url, release_notes)
+
+        """
+
+        result = self.check_updates_use_case.execute()
+        if self.update_state is not None:
+            try:
+                update_available, latest_tag, _, _ = result
+                if not update_available and latest_tag:
+                    if self.update_state.get_installed_tag() is None:
+                        self.update_state.set_installed_tag(latest_tag)
+            except Exception:
+                pass
+        return result
+
+    def mark_installed_release(self, tag: str) -> None:
+        if self.update_state is None:
+            return
+        if tag:
+            self.update_state.set_installed_tag(tag)
+
+    def get_update_state_path(self) -> Optional[str]:
+        if self.update_state is None:
+            return None
+        try:
+            return str(self.update_state.path)
+        except Exception:
+            return None
+
+
+    def download_update(self, download_url: str, output_path: str) -> Tuple[bool, str]:
+
+        """
+
+        Download update from URL
+
+
+
+        Args:
+
+            download_url: URL to download from
+
+            output_path: Where to save the file
+
+
+
+        Returns:
+
+            Tuple of (success, message)
+
+        """
+
+        return self.download_update_use_case.execute(download_url, output_path)
+
+
+
+    def is_admin(self) -> bool:
+
+        """Check if current user is admin"""
+
+        return self.current_user.is_admin()
+
+
+
+    def get_username(self) -> str:
+
+        """Get current username"""
+
+        return self.current_user.username
+
+
+
+    def get_user_type(self) -> str:
+
+        """Get current user type"""
+
+        return self.current_user.user_type
+
