@@ -116,27 +116,33 @@ class UnitConverter:
     @classmethod
     def convert_with_grams(cls, product_name: str, original_quantity: Decimal) -> Decimal:
         """
-        Convierte la cantidad usando la fórmula de gramos:
-        1. Buscar gramos en el nombre (ej: 400G)
-        2. Si tiene gramos: (gramos * cantidad_original) / 1000 * factor_conversion
-        3. Si no tiene gramos: cantidad_original (sin conversión)
+        Convierte la cantidad a kilos con la siguiente prioridad:
+
+        1. PRIMERO: Detectar tipo de panela por nombre del producto
+           (MEGA, REDONDA, 4 LIBRAS, PASTILLA KILO, PASTILLA LIBRA, KILO, etc.)
+           Si matchea → cantidad_original × total_kg del tipo
+
+        2. SEGUNDO: Buscar gramos en el nombre (ej: 400G, 500G)
+           Si tiene gramos → (gramos × cantidad_original) / 1000 × factor_categoría
+
+        3. FALLBACK: Retornar cantidad_original sin conversión
         """
+        # --- Paso 1: Detectar tipo de panela/presentación por nombre ---
+        unit_type = cls.detect_unit_from_product_name(product_name, "")
+        if unit_type in cls.CONVERSIONS:
+            converted = cls.convert_quantity(unit_type, original_quantity)
+            return converted
+
+        # --- Paso 2: Conversión por gramos en el nombre ---
         grams = cls.extract_grams_from_name(product_name)
-
         if grams > 0:
-            # Tiene gramos en el nombre: aplicar conversión
-            # Paso 1: (gramos * cantidad_original) / 1000 = kilos
             kilos = (Decimal(str(grams)) * original_quantity) / Decimal('1000')
-
-            # Paso 2: kilos * factor_conversion
             category = cls.detect_product_category(product_name)
             factor = cls.CONVERSION_FACTORS.get(category, Decimal('25'))
+            return kilos * factor
 
-            converted_quantity = kilos * factor
-            return converted_quantity
-        else:
-            # No tiene gramos: usar cantidad original sin conversión
-            return original_quantity
+        # --- Paso 3: Sin conversión posible ---
+        return original_quantity
 
     @classmethod
     def detect_unit_from_product_name(cls, product_name: str, unit_of_measure: str) -> str:
@@ -144,14 +150,16 @@ class UnitConverter:
         Detect unit type based on product name text plus unit_of_measure fallback.
 
         Detection priority:
-        1. MEGA           - nombre contiene "MEGA"
-        2. REDONDA         - nombre contiene "REDONDA"
-        3. LIBRAS (4 LB)  - nombre contiene "4 LIBRAS" o "4 LIBRA"
-        4. PASTILLA KILO   - nombre contiene "PASTILLA" + ("KILO" o "KG")
-        5. PASTILLA LIBRA  - nombre contiene "PASTILLA" + "LIBRA"
-        6. KILO            - nombre contiene "KILO" o "KILOS" (sin "PASTILLA")
-        7. PASTUANIO       - nombre contiene "PASTUANIO" o "PASTU"
-        8. Fallback        - unit_of_measure o nombre
+        1. MEGA            - nombre contiene "MEGA"
+        2. REDONDA          - nombre contiene "REDONDA"
+        3. LIBRAS (4 LB)   - nombre contiene "4 LIBRAS" o "4 LIBRA"
+        4. LIBRAS (partida) - nombre contiene "PARTIDA" o "PAQUETE" junto con "LIBRA"
+                              (ej: "Panela Partida Paquete x10 libras" → factor 20)
+        5. PASTILLA KILO    - nombre contiene "PASTILLA" + ("KILO" o "KG")
+        6. PASTILLA LIBRA   - nombre contiene "PASTILLA" + "LIBRA"
+        7. KILO             - nombre contiene "KILO" o "KILOS" (sin "PASTILLA")
+        8. PASTUANIO        - nombre contiene "PASTUANIO" o "PASTU"
+        9. Fallback         - unit_of_measure o nombre
         """
         name = (product_name or "").upper()
         um = (unit_of_measure or "").upper().strip()
@@ -160,14 +168,12 @@ class UnitConverter:
             return "MEGA"
         if "REDONDA" in name:
             return "REDONDA"
-        libra_caja_match = re.search(r'\b(?:CJX|CAJX|CJ\s*X|CAJA\s*X)\s*(\d+)\b', name)
-        if "LIBRA" in name and "PASTILLA" not in name and libra_caja_match:
-            return f"LIBRA_CAJA_{libra_caja_match.group(1)}"
-
-        if "PARTIDA" in name and "PANELA" in name:
+        # Panela 4 libras cjx10 und -> usamos LIBRAS para aplicar 20 kg por unidad
+        if "4 LIBRAS" in name or "4 LIBRA" in name:
             return "LIBRAS"
-
-        if re.search(r'\b4\s*(?:LIBRA|LIBRAS|LB|LBS)\b', name):
+        # Panela Partida Paquete x10 libras / Panela partida paquete por 4 libras
+        # Cualquier combinación de PARTIDA/PAQUETE con LIBRA(S) → mismo factor que LIBRAS (20 kg)
+        if ("PARTIDA" in name or "PAQUETE" in name) and ("LIBRA" in name or "LIBRAS" in name):
             return "LIBRAS"
         # PASTILLA KILO: detectar "PASTILLA" junto con "KILO" o "KG"
         if "PASTILLA" in name and ("KILO" in name or "KG" in name):
@@ -191,12 +197,6 @@ class UnitConverter:
         Formula: converted_quantity = original_quantity * total_kg
         """
         unit_name_upper = (unit_name or '').strip().upper()
-
-        libra_caja_match = re.match(r'^LIBRA_CAJA_(\d+)$', unit_name_upper)
-        if libra_caja_match:
-            units = int(libra_caja_match.group(1))
-            total_kg = Decimal(str(units)) * Decimal("0.5")
-            return original_quantity * total_kg
 
         if unit_name_upper in cls.CONVERSIONS:
             conversion = cls.CONVERSIONS[unit_name_upper]
@@ -379,15 +379,11 @@ class JCRCsvParser:
                 iva_str_clean = self.iva_percentage.replace('%', '').strip()
                 iva_percentage = self._parse_decimal(iva_str_clean) if iva_str_clean else Decimal('0')
 
-            name_upper = (product_name or "").upper()
-            if "PANELA" in name_upper:
-                unit_type = UnitConverter.detect_unit_from_product_name(product_name, unit_of_measure)
-                converted_quantity = UnitConverter.convert_quantity(unit_type, original_quantity)
-            else:
-                converted_quantity = UnitConverter.convert_with_grams(
-                    product_name,
-                    original_quantity
-                )
+            # Usar la nueva lógica de conversión con gramos
+            converted_quantity = UnitConverter.convert_with_grams(
+                product_name,
+                original_quantity
+            )
 
             # Calculate unit price: valor_bruto / converted_quantity
             if converted_quantity > 0:
