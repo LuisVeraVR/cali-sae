@@ -31,7 +31,19 @@ class UnitConverter:
         'ACEITE': Decimal('25')
     }
 
-    # Conversion table: {unit_name: {units: X, weight_description: Y, total_kg: Z}}
+    # =========================================================================
+    # TABLA DE CONVERSIONES DE PANELA (y similares)
+    # =========================================================================
+    #
+    # TIPO              | UNIDADES | PESO POR UNIDAD       | TOTAL KG
+    # ------------------------------------------------------------------
+    # PASTILLA LIBRA    | 32       | 0.5 kg (1 libra)      | 16 kg
+    # PASTILLA KILO     | 16       | 1.0 kg (1 kilo)       | 16 kg
+    # KILO              | 20       | 1.0 kg (1 kilo)       | 20 kg
+    # 4 LIBRAS          | 10       | 2.0 kg (4 libras c/u) | 20 kg
+    # REDONDA           | 48       | 0.5 kg (1 libra c/u)  | 24 kg
+    # MEGA              | 5        | 3.5 kg (7 libras c/u) | 17.5 kg
+    # =========================================================================
     CONVERSIONS = {
         'MEGA': {
             'units': 5,
@@ -46,12 +58,12 @@ class UnitConverter:
         'LIBRAS': {
             'units': 10,
             'weight_description': '4 LIBRAS C/U',
-            'total_kg': Decimal('20')  # 4 lb * 10 und ≈ 20 kg (regla de negocio)
+            'total_kg': Decimal('20')
         },
-        'KAO': {
+        'KILO': {
             'units': 20,
-            'weight_description': '',
-            'total_kg': Decimal('20')  # Default, adjust if needed
+            'weight_description': '1 KILO C/U',
+            'total_kg': Decimal('20')
         },
         'PASTUANIO': {
             'units': 16,
@@ -60,8 +72,13 @@ class UnitConverter:
         },
         'PASTILLA LIBRA': {
             'units': 32,
-            'weight_description': 'UNIDADES',
-            'total_kg': Decimal('32')  # Default, adjust if needed
+            'weight_description': '0.5 KG C/U (1 LIBRA)',
+            'total_kg': Decimal('16')
+        },
+        'PASTILLA KILO': {
+            'units': 16,
+            'weight_description': '1 KG C/U',
+            'total_kg': Decimal('16')
         }
     }
 
@@ -125,7 +142,16 @@ class UnitConverter:
     def detect_unit_from_product_name(cls, product_name: str, unit_of_measure: str) -> str:
         """
         Detect unit type based on product name text plus unit_of_measure fallback.
-        Example: 'Panela 4 libras cjx10 und. cod 210048' -> 'LIBRAS'
+
+        Detection priority:
+        1. MEGA           - nombre contiene "MEGA"
+        2. REDONDA         - nombre contiene "REDONDA"
+        3. LIBRAS (4 LB)  - nombre contiene "4 LIBRAS" o "4 LIBRA"
+        4. PASTILLA KILO   - nombre contiene "PASTILLA" + ("KILO" o "KG")
+        5. PASTILLA LIBRA  - nombre contiene "PASTILLA" + "LIBRA"
+        6. KILO            - nombre contiene "KILO" o "KILOS" (sin "PASTILLA")
+        7. PASTUANIO       - nombre contiene "PASTUANIO" o "PASTU"
+        8. Fallback        - unit_of_measure o nombre
         """
         name = (product_name or "").upper()
         um = (unit_of_measure or "").upper().strip()
@@ -134,17 +160,26 @@ class UnitConverter:
             return "MEGA"
         if "REDONDA" in name:
             return "REDONDA"
-        # Panela 4 libras cjx10 und -> usamos LIBRAS para aplicar 20 kg por unidad
-        if "4 LIBRAS" in name or "4 LIBRA" in name:
+        libra_caja_match = re.search(r'\b(?:CJX|CAJX|CJ\s*X|CAJA\s*X)\s*(\d+)\b', name)
+        if "LIBRA" in name and "PASTILLA" not in name and libra_caja_match:
+            return f"LIBRA_CAJA_{libra_caja_match.group(1)}"
+
+        if "PARTIDA" in name and "PANELA" in name:
             return "LIBRAS"
-        if "PASTUANIO" in name or "PASTU" in name:
-            return "PASTUANIO"
+
+        if re.search(r'\b4\s*(?:LIBRA|LIBRAS|LB|LBS)\b', name):
+            return "LIBRAS"
+        # PASTILLA KILO: detectar "PASTILLA" junto con "KILO" o "KG"
+        if "PASTILLA" in name and ("KILO" in name or "KG" in name):
+            return "PASTILLA KILO"
+        # PASTILLA LIBRA: detectar "PASTILLA" junto con "LIBRA"
         if "PASTILLA" in name and "LIBRA" in name:
             return "PASTILLA LIBRA"
-        if "KAO" in name:
-            return "KAO"
-        if "KILO" in name or "KILOS" in name:
+        if "PASTUANIO" in name or "PASTU" in name:
             return "PASTUANIO"
+        # KILO genérico: solo si NO es PASTILLA (ya capturado arriba)
+        if "KILO" in name or "KILOS" in name:
+            return "KILO"
 
         # Fallback: lo que venga en UNIDAD DE MEDIDA o el nombre
         return um or name
@@ -152,13 +187,19 @@ class UnitConverter:
     @classmethod
     def convert_quantity(cls, unit_name: str, original_quantity: Decimal) -> Decimal:
         """
-        Convert original quantity to the converted quantity based on unit type
+        Convert original quantity to the converted quantity based on unit type.
+        Formula: converted_quantity = original_quantity * total_kg
         """
         unit_name_upper = (unit_name or '').strip().upper()
 
+        libra_caja_match = re.match(r'^LIBRA_CAJA_(\d+)$', unit_name_upper)
+        if libra_caja_match:
+            units = int(libra_caja_match.group(1))
+            total_kg = Decimal(str(units)) * Decimal("0.5")
+            return original_quantity * total_kg
+
         if unit_name_upper in cls.CONVERSIONS:
             conversion = cls.CONVERSIONS[unit_name_upper]
-            # Converted quantity = original_quantity * total_kg (regla de negocio)
             return original_quantity * conversion['total_kg']
 
         # If no conversion found, return original quantity
@@ -167,17 +208,18 @@ class UnitConverter:
     @classmethod
     def get_unit_measure(cls, unit_name: str) -> str:
         """
-        Get the unit of measure for Reggis format
+        Get the unit of measure for Reggis format.
         Returns: Kg, Un, or Lt
-        (Hoy ya no lo usamos para el export, pero lo dejamos por si se requiere)
         """
         unit_name_upper = (unit_name or '').strip().upper()
 
-        # Most conversions are in Kg
-        if unit_name_upper in ['MEGA', 'REDONDA', 'LIBRAS', 'PASTUANIO']:
+        # Todas las conversiones de panela son en Kg
+        kg_types = {
+            'MEGA', 'REDONDA', 'LIBRAS', 'PASTUANIO',
+            'KILO', 'PASTILLA LIBRA', 'PASTILLA KILO'
+        }
+        if unit_name_upper in kg_types:
             return 'Kg'
-        elif unit_name_upper in ['KAO', 'PASTILLA LIBRA']:
-            return 'Un'
 
         # Default to Un (units)
         return 'Un'
@@ -337,11 +379,15 @@ class JCRCsvParser:
                 iva_str_clean = self.iva_percentage.replace('%', '').strip()
                 iva_percentage = self._parse_decimal(iva_str_clean) if iva_str_clean else Decimal('0')
 
-            # Usar la nueva lógica de conversión con gramos
-            converted_quantity = UnitConverter.convert_with_grams(
-                product_name,
-                original_quantity
-            )
+            name_upper = (product_name or "").upper()
+            if "PANELA" in name_upper:
+                unit_type = UnitConverter.detect_unit_from_product_name(product_name, unit_of_measure)
+                converted_quantity = UnitConverter.convert_quantity(unit_type, original_quantity)
+            else:
+                converted_quantity = UnitConverter.convert_with_grams(
+                    product_name,
+                    original_quantity
+                )
 
             # Calculate unit price: valor_bruto / converted_quantity
             if converted_quantity > 0:
